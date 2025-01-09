@@ -3,6 +3,7 @@ import { PlayerState } from '../types/player';
 
 export class MainScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Rectangle;
+  private door!: Phaser.GameObjects.Rectangle;
   private playerState: PlayerState = {
     isMoving: false,
     targetX: 0,
@@ -21,16 +22,25 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Create a simple rectangle as the player for now
+    // Create a simple rectangle as the player
     const centerX = this.cameras.main.centerX;
     const centerY = this.cameras.main.centerY;
     
     this.player = this.add.rectangle(
       centerX,
       centerY,
-      24, // Player width (smaller than grid)
-      24, // Player height
-      0x00ff00 // Green color
+      24,
+      24,
+      0x00ff00
+    );
+
+    // Create door (brown rectangle)
+    this.door = this.add.rectangle(
+      centerX + 128, // Position the door to the right of center
+      centerY,
+      32,
+      48,
+      0x8B4513 // Brown color
     );
 
     // Initialize cursor keys
@@ -41,8 +51,26 @@ export class MainScene extends Phaser.Scene {
     this.playerState.targetX = this.player.x;
     this.playerState.targetY = this.player.y;
 
-    // Add debug grid (helpful during development)
     this.createDebugGrid();
+
+    // Check for door overlap
+    this.checkDoorOverlap();
+  }
+
+  private checkDoorOverlap(): void {
+    if (!this.playerState.isMoving) {
+      const bounds1 = this.player.getBounds();
+      const bounds2 = this.door.getBounds();
+
+      if (Phaser.Geom.Intersects.RectangleToRectangle(bounds1, bounds2)) {
+        // Transition to MissionControlScene
+        this.scene.start('MissionControlScene', { 
+          fromDoor: true,
+          playerX: 360, // Starting position in mission control
+          playerY: 400  // Near bottom of the room
+        });
+      }
+    }
   }
 
   private createDebugGrid(): void {
@@ -103,7 +131,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(): void {
-    // Only accept new movement input when not already moving
+    // Existing movement code
     if (!this.playerState.isMoving) {
       const gridSize = this.playerState.gridSize;
       
@@ -126,5 +154,6 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.moveTowardTarget();
+    this.checkDoorOverlap();
   }
 }

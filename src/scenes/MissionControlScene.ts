@@ -12,15 +12,24 @@ export class MissionControlScene extends Phaser.Scene {
   };
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private moveSpeed: number = 200;
+  private playerStartX: number = 64;
+  private playerStartY: number = 240;
   
   // Collision and interactive objects
   private walls!: Phaser.GameObjects.Group;
-  private screens!: Phaser.GameObjects.Group;
+  private screen!: Phaser.GameObjects.Rectangle;
   private workstations!: Phaser.GameObjects.Group;
   private podium!: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super({ key: 'MissionControlScene' });
+  }
+
+  init(data: { fromDoor?: boolean; playerX?: number; playerY?: number }): void {
+    if (data.fromDoor) {
+      this.playerStartX = 80;
+      this.playerStartY = 240;
+    }
   }
 
   create(): void {
@@ -30,8 +39,9 @@ export class MissionControlScene extends Phaser.Scene {
     this.setupCollisions();
     this.cursors = this.input.keyboard!.createCursorKeys();
 
-    // Add interaction key (E)
-    this.input.keyboard!.on('keydown-E', this.handleInteraction, this);
+    // Add door on the left wall
+    const returnDoor = this.add.rectangle(32, 240, 48, 32, 0x8B4513);
+    returnDoor.setData('type', 'door');
   }
 
   private createRoom(): void {
@@ -42,52 +52,59 @@ export class MissionControlScene extends Phaser.Scene {
     this.walls.add(this.add.rectangle(360, 16, 720, 32, 0x666666));
     // Bottom wall
     this.walls.add(this.add.rectangle(360, 464, 720, 32, 0x666666));
-    // Left wall
-    this.walls.add(this.add.rectangle(16, 240, 32, 480, 0x666666));
+    // Left wall - split for door
+    this.walls.add(this.add.rectangle(16, 120, 32, 240, 0x666666));
+    this.walls.add(this.add.rectangle(16, 360, 32, 240, 0x666666));
     // Right wall
     this.walls.add(this.add.rectangle(704, 240, 32, 480, 0x666666));
   }
 
   private createPlayer(): void {
     // Create player starting at the bottom center of the room
-    this.player = this.add.rectangle(360, 400, 24, 24, 0x00ff00);
+    this.player = this.add.rectangle(
+      this.playerStartX,
+      this.playerStartY,
+      24,
+      24,
+      0x00ff00
+    );
     this.playerState.targetX = this.player.x;
     this.playerState.targetY = this.player.y;
   }
 
   private createInteractiveObjects(): void {
-    // Main screens wall (at the top)
-    this.screens = this.add.group();
-    for (let x = 96; x < 600; x += 160) {
-      const screen = this.add.rectangle(x, 64, 140, 60, 0x000066);
-      this.screens.add(screen);
-      
-      // Add glow effect
-      const glowFX = screen.preFX?.addGlow(0x0000ff, 0, 0, false, 0.1, 16);
-      if (glowFX) {
-        this.tweens.add({
-          targets: glowFX,
-          outerStrength: 2,
-          yoyo: true,
-          repeat: -1,
-          duration: 1500
-        });
-      }
+    // Main large screen at the top - made wider and taller
+    this.screen = this.add.rectangle(360, 80, 600, 120, 0x000066);
+    
+    // Add glow effect to the main screen
+    const glowFX = this.screen.preFX?.addGlow(0x0000ff, 0, 0, false, 0.1, 16);
+    if (glowFX) {
+      this.tweens.add({
+        targets: glowFX,
+        outerStrength: 2,
+        yoyo: true,
+        repeat: -1,
+        duration: 1500
+      });
     }
 
-    // Workstations (tiered seating)
+    // Workstations (two rows with more space between) - moved down
     this.workstations = this.add.group();
-    for (let y = 160; y < 400; y += 80) {
-      for (let x = 96; x < 600; x += 96) {
+    const rows = [280, 400]; // Moved rows down
+    const desksPerRow = 4; // Reduced number of desks
+    
+    rows.forEach(y => {
+      for (let i = 0; i < desksPerRow; i++) {
+        const x = 160 + (i * 160); // More space between desks
         const desk = this.add.rectangle(x, y, 80, 40, 0x333333);
         const terminal = this.add.rectangle(x, y - 10, 40, 20, 0x111111);
         this.workstations.add(desk);
         this.workstations.add(terminal);
       }
-    }
+    });
 
-    // Director's podium
-    this.podium = this.add.rectangle(360, 120, 80, 40, 0x993300);
+    // Director's podium - moved down a bit
+    this.podium = this.add.rectangle(360, 160, 80, 40, 0x993300);
   }
 
   private setupCollisions(): void {
@@ -100,36 +117,6 @@ export class MissionControlScene extends Phaser.Scene {
     });
 
     this.podium.setData('type', 'podium');
-  }
-
-  private handleInteraction(): void {
-    // Get objects near player
-    const nearbyObjects = [...this.workstations.getChildren(), this.podium]
-      .filter((obj: any) => {
-        const distance = Phaser.Math.Distance.Between(
-          this.player.x,
-          this.player.y,
-          obj.x,
-          obj.y
-        );
-        return distance < 48; // Interaction radius
-      });
-
-    if (nearbyObjects.length > 0) {
-      const object = nearbyObjects[0] as Phaser.GameObjects.Rectangle;
-      const type = object.getData('type');
-      
-      switch (type) {
-        case 'workstation':
-          console.log('Accessing workstation terminal...');
-          // TODO: Open terminal interface
-          break;
-        case 'podium':
-          console.log('Accessing director\'s podium...');
-          // TODO: Show mission briefing
-          break;
-      }
-    }
   }
 
   private canMove(targetX: number, targetY: number): boolean {
@@ -193,6 +180,18 @@ export class MissionControlScene extends Phaser.Scene {
         this.player.x = this.playerState.targetX;
         this.player.y = this.playerState.targetY;
         this.playerState.isMoving = false;
+
+        // Check for door overlap after movement completes
+        const doorDistance = Phaser.Math.Distance.Between(
+          this.player.x,
+          this.player.y,
+          32,
+          240
+        );
+
+        if (doorDistance < 32) {
+          this.scene.start('MainScene');
+        }
       } else {
         const angle = Phaser.Math.Angle.Between(
           this.player.x,

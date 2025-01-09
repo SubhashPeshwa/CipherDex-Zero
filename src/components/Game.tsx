@@ -16,7 +16,7 @@ const Game: React.FC = () => {
       height: 160 * 3,
       backgroundColor: '#000000',
       pixelArt: true,
-      scene: [MissionControlScene]
+      scene: [MainScene, MissionControlScene]
     };
 
     const game = new Phaser.Game(config);
