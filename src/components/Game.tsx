@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { MainScene } from '../scenes/MainScene';
+import { MissionControlScene } from '../scenes/MissionControlScene';
 
 const Game: React.FC = () => {
   const gameRef = useRef<HTMLDivElement>(null);
@@ -15,7 +16,7 @@ const Game: React.FC = () => {
       height: 160 * 3,
       backgroundColor: '#000000',
       pixelArt: true,
-      scene: [MainScene]
+      scene: [MissionControlScene]
     };
 
     const game = new Phaser.Game(config);
