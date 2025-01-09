@@ -3,7 +3,7 @@ import Game from './components/Game';
 
 const App: React.FC = () => {
   return (
-    <div className="w-screen h-screen bg-gray-900 flex items-center justify-center">
+    <div className="fixed inset-0 bg-gray-900 overflow-hidden">
       <Game />
     </div>
   );

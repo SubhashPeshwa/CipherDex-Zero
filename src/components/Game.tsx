@@ -11,36 +11,58 @@ const Game: React.FC = () => {
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: gameRef.current,
-      width: 240 * 3, // GBA resolution * 3
+      width: 240 * 3,
       height: 160 * 3,
       backgroundColor: '#000000',
       pixelArt: true,
-      scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-      },
       scene: [MainScene]
     };
 
     const game = new Phaser.Game(config);
 
+    const resizeGame = () => {
+      if (!gameRef.current) return;
+
+      const canvas = gameRef.current.querySelector('canvas');
+      if (!canvas) return;
+
+      const padding = 32; // Add some padding to prevent touching screen edges
+      const maxWidth = window.innerWidth - padding;
+      const maxHeight = window.innerHeight - padding;
+      const windowRatio = maxWidth / maxHeight;
+      const gameRatio = (240 * 3) / (160 * 3);
+      
+      let newWidth, newHeight;
+
+      if (windowRatio < gameRatio) {
+        // Window is taller than game ratio
+        newWidth = maxWidth;
+        newHeight = maxWidth / gameRatio;
+      } else {
+        // Window is wider than game ratio
+        newHeight = maxHeight;
+        newWidth = maxHeight * gameRatio;
+      }
+
+      canvas.style.width = `${newWidth}px`;
+      canvas.style.height = `${newHeight}px`;
+    };
+
+    // Initial resize and event listener
+    resizeGame();
+    window.addEventListener('resize', resizeGame);
+
     return () => {
+      window.removeEventListener('resize', resizeGame);
       game.destroy(true);
     };
   }, []);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
-      <div ref={gameRef} className="game-container" />
-      {/* Terminal overlay will go here */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 hidden">
-        <div className="bg-terminal-black border border-terminal-green rounded-lg p-4">
-          <div className="text-terminal-green font-mono">
-            {/* Terminal content will go here */}
-          </div>
-        </div>
-      </div>
-    </div>
+    <div 
+      ref={gameRef} 
+      className="fixed inset-0 flex items-center justify-center overflow-hidden"
+    />
   );
 };
 
