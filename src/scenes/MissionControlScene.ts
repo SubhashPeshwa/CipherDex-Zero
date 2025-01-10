@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { PlayerState } from '../types/player';
 
 export class MissionControlScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle;
+  private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   private playerState: PlayerState = {
     isMoving: false,
     targetX: 0,
@@ -60,14 +60,22 @@ export class MissionControlScene extends Phaser.Scene {
   }
 
   private createPlayer(): void {
-    // Create player starting at the bottom center of the room
-    this.player = this.add.rectangle(
+    // Create player sprite
+    this.player = this.physics.add.sprite(
       this.playerStartX,
       this.playerStartY,
-      24,
-      24,
-      0x00ff00
+      'player'
     );
+    this.player.setScale(1); // Scale up to take 2x2 grid squares
+
+    // Adjust the collision bounds to match 2x2 grid squares but center the sprite
+    this.player.body.setSize(0, 0); // Size of 1x1 grid square for tighter collision
+    this.player.body.setOffset(0, 0); // Offset to center the collision box on the feet
+    this.player.setOrigin(0, 0); // Adjust origin to center the full sprite including hair
+
+    // Just play the initial animation
+    this.player.play('idle-down');
+    
     this.playerState.targetX = this.player.x;
     this.playerState.targetY = this.player.y;
   }
@@ -188,24 +196,49 @@ export class MissionControlScene extends Phaser.Scene {
       const gridSize = this.playerState.gridSize;
       let newTargetX = this.playerState.targetX;
       let newTargetY = this.playerState.targetY;
+      let isMovementKeyPressed = false;
+      let newAnimation = '';
       
       if (this.cursors.left.isDown) {
         newTargetX = this.player.x - gridSize;
+        newAnimation = 'walk-side';
+        this.player.setFlipX(true);
+        isMovementKeyPressed = true;
       }
       else if (this.cursors.right.isDown) {
         newTargetX = this.player.x + gridSize;
+        newAnimation = 'walk-side';
+        this.player.setFlipX(false);
+        isMovementKeyPressed = true;
       }
       else if (this.cursors.up.isDown) {
         newTargetY = this.player.y - gridSize;
+        newAnimation = 'walk-up';
+        isMovementKeyPressed = true;
       }
       else if (this.cursors.down.isDown) {
         newTargetY = this.player.y + gridSize;
+        newAnimation = 'walk-down';
+        isMovementKeyPressed = true;
       }
 
-      if (this.canMove(newTargetX, newTargetY)) {
+      if (this.canMove(newTargetX, newTargetY) && isMovementKeyPressed) {
         this.playerState.targetX = newTargetX;
         this.playerState.targetY = newTargetY;
         this.playerState.isMoving = true;
+        this.player.play(newAnimation, true);
+      } else if (!isMovementKeyPressed) {
+        // Set idle animation based on last movement
+        const currentAnim = this.player.anims.currentAnim?.key || '';
+        if (currentAnim.includes('down')) {
+          this.player.play('idle-down', true);
+        } else if (currentAnim.includes('up')) {
+          this.player.play('idle-up', true);
+        } else if (currentAnim.includes('side')) {
+          this.player.play('idle-side', true);
+        } else {
+          this.player.play('idle-down', true); // Default idle
+        }
       }
     }
 
@@ -222,6 +255,18 @@ export class MissionControlScene extends Phaser.Scene {
         this.player.x = this.playerState.targetX;
         this.player.y = this.playerState.targetY;
         this.playerState.isMoving = false;
+        
+        // Set idle animation based on last movement
+        const currentAnim = this.player.anims.currentAnim?.key || '';
+        if (currentAnim.includes('down')) {
+          this.player.play('idle-down', true);
+        } else if (currentAnim.includes('up')) {
+          this.player.play('idle-up', true);
+        } else if (currentAnim.includes('side')) {
+          this.player.play('idle-side', true);
+        } else {
+          this.player.play('idle-down', true); // Default idle
+        }
 
         // Check for door overlap after movement completes
         const doorDistance = Phaser.Math.Distance.Between(
@@ -249,5 +294,14 @@ export class MissionControlScene extends Phaser.Scene {
         this.player.y += Math.sin(angle) * speed * deltaTime;
       }
     }
+  }
+
+  preload(): void {
+    // Load the player sprite if not already loaded
+    this.load.spritesheet('player', 'assets/player.png', {
+      frameWidth: 48,
+      frameHeight: 48,
+      spacing: 0
+    });
   }
 }

@@ -16,6 +16,13 @@ const Game: React.FC = () => {
       height: 160 * 3,
       backgroundColor: '#000000',
       pixelArt: true,
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { x: 0, y: 0 },
+          debug: false
+        }
+      },
       scene: [MainScene, MissionControlScene]
     };
 

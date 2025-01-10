@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { PlayerState } from '../types/player';
 
 export class MainScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle;
+  private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   private door!: Phaser.GameObjects.Rectangle;
   private playerState: PlayerState = {
     isMoving: false,
@@ -18,21 +18,72 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // We'll load actual sprites here later
+    // Load the player sprite
+    this.load.spritesheet('player', 'assets/player.png', {
+      frameWidth: 48,
+      frameHeight: 48,
+      spacing: 0
+    });
   }
 
   create(): void {
-    // Create a simple rectangle as the player
+    // Create player sprite instead of rectangle
     const centerX = this.cameras.main.centerX;
     const centerY = this.cameras.main.centerY;
     
-    this.player = this.add.rectangle(
-      centerX,
-      centerY,
-      24,
-      24,
-      0x00ff00
-    );
+    this.player = this.physics.add.sprite(centerX, centerY, 'player');
+    this.player.setScale(1); // Scale up to take 2x2 grid squares
+    
+    // Adjust the collision bounds to match 2x2 grid squares but center the sprite
+    this.player.body.setSize(0, 0); // Size of 1x1 grid square for tighter collision
+    this.player.body.setOffset(0, 0); // Offset to center the collision box on the feet
+    this.player.setOrigin(0, 0); // Adjust origin to center the full sprite including hair
+
+    // Create animations for each direction
+    this.anims.create({
+      key: 'idle-down',
+      frames: this.anims.generateFrameNumbers('player', { frames: [0] }),
+      frameRate: 8,
+      repeat: 0
+    });
+
+    this.anims.create({
+      key: 'idle-up',
+      frames: this.anims.generateFrameNumbers('player', { frames: [2] }),
+      frameRate: 8,
+      repeat: 0
+    });
+
+    this.anims.create({
+      key: 'idle-side',
+      frames: this.anims.generateFrameNumbers('player', { frames: [3] }),
+      frameRate: 8,
+      repeat: 0
+    });
+
+    this.anims.create({
+      key: 'walk-down',
+      frames: this.anims.generateFrameNumbers('player', { frames: [0, 4, 8, 12] }),
+      frameRate: 8,
+      repeat: -1
+    });
+
+    this.anims.create({
+      key: 'walk-up',
+      frames: this.anims.generateFrameNumbers('player', { frames: [2, 6, 10, 14] }),
+      frameRate: 8,
+      repeat: -1
+    });
+
+    this.anims.create({
+      key: 'walk-side',
+      frames: this.anims.generateFrameNumbers('player', { frames: [3, 7, 11, 15 ] }),
+      frameRate: 8,
+      repeat: -1
+    });
+
+    // Play idle-down animation by default
+    this.player.play('idle-down');
 
     // Create door (brown rectangle)
     this.door = this.add.rectangle(
@@ -92,7 +143,7 @@ export class MainScene extends Phaser.Scene {
     graphics.stroke();
   }
 
-  private snapToGrid(gameObject: Phaser.GameObjects.Rectangle): void {
+  private snapToGrid(gameObject: Phaser.GameObjects.Sprite): void {
     const gridSize = this.playerState.gridSize;
     gameObject.x = Math.round(gameObject.x / gridSize) * gridSize;
     gameObject.y = Math.round(gameObject.y / gridSize) * gridSize;
@@ -136,32 +187,58 @@ export class MainScene extends Phaser.Scene {
       const gridSize = this.playerState.gridSize;
       let newTargetX = this.player.x;
       let newTargetY = this.player.y;
+      let isMovementKeyPressed = false;
+      let newAnimation = '';
       
       if (this.cursors.left.isDown) {
         newTargetX = this.player.x - gridSize;
+        newAnimation = 'walk-side';
+        isMovementKeyPressed = true;
+        this.player.setFlipX(true);
       }
       else if (this.cursors.right.isDown) {
         newTargetX = this.player.x + gridSize;
+        newAnimation = 'walk-side';
+        isMovementKeyPressed = true;
+        this.player.setFlipX(false);
       }
       else if (this.cursors.up.isDown) {
         newTargetY = this.player.y - gridSize;
+        newAnimation = 'walk-up';
+        isMovementKeyPressed = true;
       }
       else if (this.cursors.down.isDown) {
         newTargetY = this.player.y + gridSize;
+        newAnimation = 'walk-down';
+        isMovementKeyPressed = true;
       }
 
       // Check if the new position would be within bounds
-      const halfWidth = this.player.width / 2;
-      const halfHeight = this.player.height / 2;
-      const margin = 0; // Remove the margin to allow movement to the edges
+      const halfWidth = this.player.body.width / 2;
+      const halfHeight = this.player.body.height / 2;
+      const margin = 0;
 
-      if (newTargetX >= margin + halfWidth && 
+      if (isMovementKeyPressed &&
+          newTargetX >= margin + halfWidth && 
           newTargetX <= this.cameras.main.width - margin - halfWidth &&
           newTargetY >= margin + halfHeight && 
           newTargetY <= this.cameras.main.height - margin - halfHeight) {
         this.playerState.targetX = newTargetX;
         this.playerState.targetY = newTargetY;
         this.playerState.isMoving = true;
+        this.player.play(newAnimation, true);
+      } else if (!isMovementKeyPressed) {
+        // Set idle animation based on last movement
+        const currentAnim = this.player.anims.currentAnim?.key || '';
+        if (currentAnim.includes('down')) {
+          this.player.play('idle-down', true);
+        } else if (currentAnim.includes('up')) {
+          this.player.play('idle-up', true);
+        } else if (currentAnim.includes('side')) {
+          this.player.play('idle-side', true);
+        } else {
+          this.player.play('idle-down', true); // Default idle
+        }
       }
     }
 
