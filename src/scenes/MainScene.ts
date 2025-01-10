@@ -27,17 +27,16 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Create player sprite instead of rectangle
+    // Create player sprite
     const centerX = this.cameras.main.centerX;
     const centerY = this.cameras.main.centerY;
     
     this.player = this.physics.add.sprite(centerX, centerY, 'player');
-    this.player.setScale(1); // Scale up to take 2x2 grid squares
+    this.player.setScale(1);
     
-    // Adjust the collision bounds to match 2x2 grid squares but center the sprite
-    this.player.body.setSize(0, 0); // Size of 1x1 grid square for tighter collision
-    this.player.body.setOffset(0, 0); // Offset to center the collision box on the feet
-    this.player.setOrigin(0, 0); // Adjust origin to center the full sprite including hair
+    // Set proper collision bounds
+    this.player.body.setSize(32, 32);  // Match grid size
+    this.player.body.setOffset(8, 8);  // Center the collision box
 
     // Create animations for each direction
     this.anims.create({
@@ -85,14 +84,15 @@ export class MainScene extends Phaser.Scene {
     // Play idle-down animation by default
     this.player.play('idle-down');
 
-    // Create door (brown rectangle)
+    // Create door with physics body
     this.door = this.add.rectangle(
-      centerX + 128, // Position the door to the right of center
+      centerX + 128,
       centerY,
       32,
       48,
-      0x8B4513 // Brown color
+      0x8B4513
     );
+    this.physics.add.existing(this.door, true); // Add static physics body to door
 
     // Initialize cursor keys
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -104,21 +104,30 @@ export class MainScene extends Phaser.Scene {
 
     this.createDebugGrid();
 
-    // Check for door overlap
-    this.checkDoorOverlap();
+    // Adjust world bounds to align with grid
+    const gridSize = this.playerState.gridSize;
+    const worldWidth = Math.ceil(this.cameras.main.width / gridSize) * gridSize;
+    const worldHeight = Math.ceil(this.cameras.main.height / gridSize) * gridSize;
+    
+    this.physics.world.setBounds(
+      0,  // Start bounds at 0
+      0,  // Start bounds at 0
+      worldWidth,  // Full width
+      worldHeight  // Full height
+    );
+    this.player.setCollideWorldBounds(true);
   }
 
   private checkDoorOverlap(): void {
     if (!this.playerState.isMoving) {
-      const bounds1 = this.player.getBounds();
-      const bounds2 = this.door.getBounds();
+      const playerBounds = this.player.getBounds();
+      const doorBounds = this.door.getBounds();
 
-      if (Phaser.Geom.Intersects.RectangleToRectangle(bounds1, bounds2)) {
-        // Transition to MissionControlScene
+      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, doorBounds)) {
         this.scene.start('MissionControlScene', { 
           fromDoor: true,
-          playerX: 360, // Starting position in mission control
-          playerY: 400  // Near bottom of the room
+          playerX: 360,
+          playerY: 400
         });
       }
     }

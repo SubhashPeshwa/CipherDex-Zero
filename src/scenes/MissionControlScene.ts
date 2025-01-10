@@ -48,30 +48,37 @@ export class MissionControlScene extends Phaser.Scene {
     // Create walls (simple rectangles for now)
     this.walls = this.add.group();
     
-    // Top wall
-    this.walls.add(this.add.rectangle(360, 8, 720, 16, 0x666666));
-    // Bottom wall
-    this.walls.add(this.add.rectangle(360, 472, 720, 16, 0x666666));
-    // Left wall - split for door
-    this.walls.add(this.add.rectangle(8, 120, 16, 240, 0x666666));
-    this.walls.add(this.add.rectangle(8, 360, 16, 240, 0x666666));
-    // Right wall
-    this.walls.add(this.add.rectangle(712, 240, 16, 480, 0x666666));
+    // Create wall rectangles with physics bodies
+    const walls = [
+      // Top wall
+      this.add.rectangle(360, 8, 720, 16, 0x666666),
+      // Bottom wall
+      this.add.rectangle(360, 472, 720, 16, 0x666666),
+      // Left wall - split for door
+      this.add.rectangle(8, 120, 16, 240, 0x666666),
+      this.add.rectangle(8, 360, 16, 240, 0x666666),
+      // Right wall
+      this.add.rectangle(712, 240, 16, 480, 0x666666)
+    ];
+
+    // Add physics bodies to walls
+    walls.forEach(wall => {
+      this.physics.add.existing(wall, true); // true makes it static
+      this.walls.add(wall);
+    });
   }
 
   private createPlayer(): void {
-    // Create player sprite
     this.player = this.physics.add.sprite(
       this.playerStartX,
       this.playerStartY,
       'player'
     );
-    this.player.setScale(1); // Scale up to take 2x2 grid squares
+    this.player.setScale(1);
 
-    // Adjust the collision bounds to match 2x2 grid squares but center the sprite
-    this.player.body.setSize(0, 0); // Size of 1x1 grid square for tighter collision
-    this.player.body.setOffset(0, 0); // Offset to center the collision box on the feet
-    this.player.setOrigin(0, 0); // Adjust origin to center the full sprite including hair
+    // Set proper collision box size
+    this.player.body.setSize(32, 32);  // Match grid size
+    this.player.body.setOffset(8, 8);  // Center the collision box
 
     // Just play the initial animation
     this.player.play('idle-down');
@@ -81,38 +88,33 @@ export class MissionControlScene extends Phaser.Scene {
   }
 
   private createInteractiveObjects(): void {
-    // Main large screen at the top - made wider and taller
+    // Main screen
     this.screen = this.add.rectangle(360, 80, 600, 120, 0x000066);
+    this.physics.add.existing(this.screen, true);
     
-    // Add glow effect to the main screen
-    const glowFX = this.screen.preFX?.addGlow(0x0000ff, 0, 0, false, 0.1, 16);
-    if (glowFX) {
-      this.tweens.add({
-        targets: glowFX,
-        outerStrength: 2,
-        yoyo: true,
-        repeat: -1,
-        duration: 1500
-      });
-    }
-
-    // Workstations (two rows with more space between) - moved down
+    // Workstations
     this.workstations = this.add.group();
-    const rows = [280, 400]; // Moved rows down
-    const desksPerRow = 4; // Reduced number of desks
+    const rows = [280, 400];
+    const desksPerRow = 4;
     
     rows.forEach(y => {
       for (let i = 0; i < desksPerRow; i++) {
-        const x = 160 + (i * 160); // More space between desks
+        const x = 160 + (i * 160);
         const desk = this.add.rectangle(x, y, 80, 40, 0x333333);
         const terminal = this.add.rectangle(x, y - 10, 40, 20, 0x111111);
+        
+        // Add physics bodies to both desk and terminal
+        this.physics.add.existing(desk, true);
+        this.physics.add.existing(terminal, true);
+        
         this.workstations.add(desk);
         this.workstations.add(terminal);
       }
     });
 
-    // Director's podium - moved down a bit
+    // Director's podium
     this.podium = this.add.rectangle(360, 160, 80, 40, 0x993300);
+    this.physics.add.existing(this.podium, true);
   }
 
   private setupCollisions(): void {
@@ -130,14 +132,14 @@ export class MissionControlScene extends Phaser.Scene {
 
   private canMove(targetX: number, targetY: number): boolean {
     // Create a temporary rectangle representing the player's next position
+    // Center the bounds calculation on the target position
     const playerBounds = new Phaser.Geom.Rectangle(
-      targetX - this.player.width/2,
-      targetY - this.player.height/2,
-      this.player.width,
-      this.player.height
+      targetX - this.player.body.width/2,
+      targetY - this.player.body.height/2,
+      this.player.body.width,
+      this.player.body.height
     );
 
-    // Check collision with walls
     let canMove = true;
     
     // Check walls

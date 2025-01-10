@@ -20,7 +20,10 @@ const Game: React.FC = () => {
         default: 'arcade',
         arcade: {
           gravity: { x: 0, y: 0 },
-          debug: false
+          debug: true,
+          debugShowBody: true,
+          debugShowStaticBody: true,
+          debugBodyColor: 0xff00ff
         }
       },
       scene: [MainScene, MissionControlScene]
