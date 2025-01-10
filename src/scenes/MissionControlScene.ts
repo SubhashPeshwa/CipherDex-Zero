@@ -49,14 +49,14 @@ export class MissionControlScene extends Phaser.Scene {
     this.walls = this.add.group();
     
     // Top wall
-    this.walls.add(this.add.rectangle(360, 16, 720, 32, 0x666666));
+    this.walls.add(this.add.rectangle(360, 8, 720, 16, 0x666666));
     // Bottom wall
-    this.walls.add(this.add.rectangle(360, 464, 720, 32, 0x666666));
+    this.walls.add(this.add.rectangle(360, 472, 720, 16, 0x666666));
     // Left wall - split for door
-    this.walls.add(this.add.rectangle(16, 120, 32, 240, 0x666666));
-    this.walls.add(this.add.rectangle(16, 360, 32, 240, 0x666666));
+    this.walls.add(this.add.rectangle(8, 120, 16, 240, 0x666666));
+    this.walls.add(this.add.rectangle(8, 360, 16, 240, 0x666666));
     // Right wall
-    this.walls.add(this.add.rectangle(704, 240, 32, 480, 0x666666));
+    this.walls.add(this.add.rectangle(712, 240, 16, 480, 0x666666));
   }
 
   private createPlayer(): void {
@@ -117,26 +117,68 @@ export class MissionControlScene extends Phaser.Scene {
     });
 
     this.podium.setData('type', 'podium');
+    this.screen.setData('type', 'screen');
   }
 
   private canMove(targetX: number, targetY: number): boolean {
+    // Create a temporary rectangle representing the player's next position
+    const playerBounds = new Phaser.Geom.Rectangle(
+      targetX - this.player.width/2,
+      targetY - this.player.height/2,
+      this.player.width,
+      this.player.height
+    );
+
     // Check collision with walls
     let canMove = true;
     
+    // Check walls
     this.walls.getChildren().forEach((wall: any) => {
-      if (Phaser.Geom.Rectangle.Contains(
-        new Phaser.Geom.Rectangle(
-          wall.x - wall.width/2,
-          wall.y - wall.height/2,
-          wall.width,
-          wall.height
-        ),
-        targetX,
-        targetY
-      )) {
+      const wallBounds = new Phaser.Geom.Rectangle(
+        wall.x - wall.width/2,
+        wall.y - wall.height/2,
+        wall.width,
+        wall.height
+      );
+      if (Phaser.Geom.Rectangle.Overlaps(playerBounds, wallBounds)) {
         canMove = false;
       }
     });
+
+    // Check workstations
+    this.workstations.getChildren().forEach((station: any) => {
+      const stationBounds = new Phaser.Geom.Rectangle(
+        station.x - station.width/2,
+        station.y - station.height/2,
+        station.width,
+        station.height
+      );
+      if (Phaser.Geom.Rectangle.Overlaps(playerBounds, stationBounds)) {
+        canMove = false;
+      }
+    });
+
+    // Check podium
+    const podiumBounds = new Phaser.Geom.Rectangle(
+      this.podium.x - this.podium.width/2,
+      this.podium.y - this.podium.height/2,
+      this.podium.width,
+      this.podium.height
+    );
+    if (Phaser.Geom.Rectangle.Overlaps(playerBounds, podiumBounds)) {
+      canMove = false;
+    }
+
+    // Check screen
+    const screenBounds = new Phaser.Geom.Rectangle(
+      this.screen.x - this.screen.width/2,
+      this.screen.y - this.screen.height/2,
+      this.screen.width,
+      this.screen.height
+    );
+    if (Phaser.Geom.Rectangle.Overlaps(playerBounds, screenBounds)) {
+      canMove = false;
+    }
 
     return canMove;
   }

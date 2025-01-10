@@ -134,21 +134,33 @@ export class MainScene extends Phaser.Scene {
     // Existing movement code
     if (!this.playerState.isMoving) {
       const gridSize = this.playerState.gridSize;
+      let newTargetX = this.player.x;
+      let newTargetY = this.player.y;
       
       if (this.cursors.left.isDown) {
-        this.playerState.targetX = this.player.x - gridSize;
-        this.playerState.isMoving = true;
+        newTargetX = this.player.x - gridSize;
       }
       else if (this.cursors.right.isDown) {
-        this.playerState.targetX = this.player.x + gridSize;
-        this.playerState.isMoving = true;
+        newTargetX = this.player.x + gridSize;
       }
       else if (this.cursors.up.isDown) {
-        this.playerState.targetY = this.player.y - gridSize;
-        this.playerState.isMoving = true;
+        newTargetY = this.player.y - gridSize;
       }
       else if (this.cursors.down.isDown) {
-        this.playerState.targetY = this.player.y + gridSize;
+        newTargetY = this.player.y + gridSize;
+      }
+
+      // Check if the new position would be within bounds
+      const halfWidth = this.player.width / 2;
+      const halfHeight = this.player.height / 2;
+      const margin = 0; // Remove the margin to allow movement to the edges
+
+      if (newTargetX >= margin + halfWidth && 
+          newTargetX <= this.cameras.main.width - margin - halfWidth &&
+          newTargetY >= margin + halfHeight && 
+          newTargetY <= this.cameras.main.height - margin - halfHeight) {
+        this.playerState.targetX = newTargetX;
+        this.playerState.targetY = newTargetY;
         this.playerState.isMoving = true;
       }
     }
