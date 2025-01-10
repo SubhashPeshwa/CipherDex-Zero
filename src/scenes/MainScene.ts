@@ -11,7 +11,8 @@ export class MainScene extends Phaser.Scene {
     gridSize: 32 // Size of each grid cell
   };
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private moveSpeed: number = 200; // Pixels per second
+  private moveSpeed: number = 400; // Pixels per second
+  private furniture!: Phaser.GameObjects.Group;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -24,15 +25,31 @@ export class MainScene extends Phaser.Scene {
       frameHeight: 48,
       spacing: 0
     });
+
+    // Load office objects tileset
+    this.load.spritesheet('objects', 'assets/objects.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+      spacing: 0
+    });
   }
 
   create(): void {
+    // Create white tiles
+    this.createTiles();
+
+    // Initialize furniture group
+    this.furniture = this.add.group();
+
+    // Add office objects
+    this.createOfficeObjects();
+
     // Create player sprite
     const centerX = this.cameras.main.centerX;
     const centerY = this.cameras.main.centerY;
     
     this.player = this.physics.add.sprite(centerX, centerY, 'player');
-    this.player.setScale(1);
+    this.player.setScale(2);
     
     // Set proper collision bounds
     this.player.body.setSize(32, 32);  // Match grid size
@@ -84,16 +101,6 @@ export class MainScene extends Phaser.Scene {
     // Play idle-down animation by default
     this.player.play('idle-down');
 
-    // Create door with physics body
-    this.door = this.add.rectangle(
-      centerX + 128,
-      centerY,
-      32,
-      48,
-      0x8B4513
-    );
-    this.physics.add.existing(this.door, true); // Add static physics body to door
-
     // Initialize cursor keys
     this.cursors = this.input.keyboard!.createCursorKeys();
 
@@ -102,7 +109,8 @@ export class MainScene extends Phaser.Scene {
     this.playerState.targetX = this.player.x;
     this.playerState.targetY = this.player.y;
 
-    this.createDebugGrid();
+    // Add collider between player and furniture
+    this.physics.add.collider(this.player, this.furniture);
 
     // Adjust world bounds to align with grid
     const gridSize = this.playerState.gridSize;
@@ -190,6 +198,112 @@ export class MainScene extends Phaser.Scene {
     this.player.y += Math.sin(angle) * speed * deltaTime;
   }
 
+  private createTiles(): void {
+    const graphics = this.add.graphics();
+    const tileSize = this.playerState.gridSize;
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    // Fill the entire background with white
+    graphics.fillStyle(0xFFFFFF);
+    graphics.fillRect(0, 0, width, height);
+
+    // Draw slightly darker grid lines
+    graphics.lineStyle(1, 0xEEEEEE);
+
+    // Draw vertical lines
+    for (let x = 0; x <= width; x += tileSize) {
+      graphics.moveTo(x, 0);
+      graphics.lineTo(x, height);
+    }
+
+    // Draw horizontal lines
+    for (let y = 0; y <= height; y += tileSize) {
+      graphics.moveTo(0, y);
+      graphics.lineTo(width, y);
+    }
+
+    graphics.stroke();
+  }
+
+  private createOfficeObjects(): void {
+    const centerX = this.cameras.main.centerX;
+    const centerY = this.cameras.main.centerY;
+    const margin = 80; // Margin from the edges
+
+    // Add bookshelves at the corners
+    // Top-left bookshelf
+    this.add.image(margin, margin, 'objects', 4); // Using frame 1 for bookshelf
+
+    // Top-right bookshelf
+    this.add.image(this.cameras.main.width - margin, margin, 'objects', 4);
+
+    // Bottom-left bookshelf
+    this.add.image(margin, this.cameras.main.height - margin, 'objects', 4);
+
+    // Bottom-right bookshelf
+    this.add.image(this.cameras.main.width - margin, this.cameras.main.height - margin, 'objects', 4);
+
+    // Create door with physics body
+    this.door = this.add.rectangle(
+      centerX + 128,
+      centerY,
+      32,
+      48,
+      0x8B4513
+    );
+    this.physics.add.existing(this.door, true);
+
+    // Create collision objects for the furniture
+    this.createFurnitureCollision();
+  }
+
+  private createFurnitureCollision(): void {
+    const margin = 80;
+
+    // Add collision for bookshelves
+    // Top-left bookshelf
+    const bookshelf1 = this.add.rectangle(margin, margin, 32, 32, 0x000000, 0);
+    this.physics.add.existing(bookshelf1, true);
+    this.furniture.add(bookshelf1);
+
+    // Top-right bookshelf
+    const bookshelf2 = this.add.rectangle(this.cameras.main.width - margin, margin, 32, 32, 0x000000, 0);
+    this.physics.add.existing(bookshelf2, true);
+    this.furniture.add(bookshelf2);
+
+    // Bottom-left bookshelf
+    const bookshelf3 = this.add.rectangle(margin, this.cameras.main.height - margin, 32, 32, 0x000000, 0);
+    this.physics.add.existing(bookshelf3, true);
+    this.furniture.add(bookshelf3);
+
+    // Bottom-right bookshelf
+    const bookshelf4 = this.add.rectangle(this.cameras.main.width - margin, this.cameras.main.height - margin, 32, 32, 0x000000, 0);
+    this.physics.add.existing(bookshelf4, true);
+    this.furniture.add(bookshelf4);
+  }
+
+  private canMove(targetX: number, targetY: number): boolean {
+    // Create a temporary rectangle representing the player's next position
+    const bounds = new Phaser.Geom.Rectangle(
+      targetX - this.player.body.width/2,
+      targetY - this.player.body.height/2,
+      this.player.body.width,
+      this.player.body.height
+    );
+
+    // Check collision with furniture
+    let canMove = true;
+    this.furniture.getChildren().forEach((furniture: any) => {
+      const furnitureBounds = furniture.getBounds();
+      if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, furnitureBounds)) {
+        canMove = false;
+      }
+    });
+
+    return canMove;
+  }
+
   update(): void {
     // Existing movement code
     if (!this.playerState.isMoving) {
@@ -222,7 +336,7 @@ export class MainScene extends Phaser.Scene {
         isMovementKeyPressed = true;
       }
 
-      // Check if the new position would be within bounds
+      // Check if the new position would be within bounds and not colliding with furniture
       const halfWidth = this.player.body.width / 2;
       const halfHeight = this.player.body.height / 2;
       const margin = 0;
@@ -231,7 +345,8 @@ export class MainScene extends Phaser.Scene {
           newTargetX >= margin + halfWidth && 
           newTargetX <= this.cameras.main.width - margin - halfWidth &&
           newTargetY >= margin + halfHeight && 
-          newTargetY <= this.cameras.main.height - margin - halfHeight) {
+          newTargetY <= this.cameras.main.height - margin - halfHeight &&
+          this.canMove(newTargetX, newTargetY)) {
         this.playerState.targetX = newTargetX;
         this.playerState.targetY = newTargetY;
         this.playerState.isMoving = true;

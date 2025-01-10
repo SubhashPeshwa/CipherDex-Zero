@@ -13,8 +13,8 @@ const Game: React.FC = () => {
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: gameRef.current,
-      width: 240 * 3,
-      height: 160 * 3,
+      width: 1280,
+      height: 720,
       backgroundColor: '#000000',
       pixelArt: true,
       physics: {
@@ -27,7 +27,7 @@ const Game: React.FC = () => {
           debugBodyColor: 0xff00ff
         }
       },
-      scene: [LoadingScene, MainScene, MissionControlScene]
+      scene: [MainScene, MissionControlScene]
     };
 
     const game = new Phaser.Game(config);
@@ -42,7 +42,7 @@ const Game: React.FC = () => {
       const maxWidth = window.innerWidth - padding;
       const maxHeight = window.innerHeight - padding;
       const windowRatio = maxWidth / maxHeight;
-      const gameRatio = (240 * 3) / (160 * 3);
+      const gameRatio = 1280 / 720;
       
       let newWidth, newHeight;
 

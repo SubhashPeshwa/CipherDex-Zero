@@ -28,11 +28,14 @@ export class MissionControlScene extends Phaser.Scene {
   init(data: { fromDoor?: boolean; playerX?: number; playerY?: number }): void {
     if (data.fromDoor) {
       this.playerStartX = 80;
-      this.playerStartY = 240;
+      this.playerStartY = this.cameras.main.height/2;
     }
   }
 
   create(): void {
+    // Create white tiles
+    this.createTiles();
+
     this.createRoom();
     this.createPlayer();
     this.createInteractiveObjects();
@@ -44,26 +47,57 @@ export class MissionControlScene extends Phaser.Scene {
     returnDoor.setData('type', 'door');
   }
 
+  private createTiles(): void {
+    const graphics = this.add.graphics();
+    const tileSize = this.playerState.gridSize;
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    // Fill the entire background with white
+    graphics.fillStyle(0xFFFFFF);
+    graphics.fillRect(0, 0, width, height);
+
+    // Draw slightly darker grid lines
+    graphics.lineStyle(1, 0xEEEEEE);
+
+    // Draw vertical lines
+    for (let x = 0; x <= width; x += tileSize) {
+      graphics.moveTo(x, 0);
+      graphics.lineTo(x, height);
+    }
+
+    // Draw horizontal lines
+    for (let y = 0; y <= height; y += tileSize) {
+      graphics.moveTo(0, y);
+      graphics.lineTo(width, y);
+    }
+
+    graphics.stroke();
+  }
+
   private createRoom(): void {
     // Create walls (simple rectangles for now)
     this.walls = this.add.group();
     
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    
     // Create wall rectangles with physics bodies
     const walls = [
       // Top wall
-      this.add.rectangle(360, 8, 720, 16, 0x666666),
+      this.add.rectangle(width/2, 8, width, 16, 0x666666),
       // Bottom wall
-      this.add.rectangle(360, 472, 720, 16, 0x666666),
+      this.add.rectangle(width/2, height - 8, width, 16, 0x666666),
       // Left wall - split for door
       this.add.rectangle(8, 120, 16, 240, 0x666666),
-      this.add.rectangle(8, 360, 16, 240, 0x666666),
+      this.add.rectangle(8, height - 120, 16, 240, 0x666666),
       // Right wall
-      this.add.rectangle(712, 240, 16, 480, 0x666666)
+      this.add.rectangle(width - 8, height/2, 16, height, 0x666666)
     ];
 
     // Add physics bodies to walls
     walls.forEach(wall => {
-      this.physics.add.existing(wall, true); // true makes it static
+      this.physics.add.existing(wall, true);
       this.walls.add(wall);
     });
   }
@@ -88,22 +122,24 @@ export class MissionControlScene extends Phaser.Scene {
   }
 
   private createInteractiveObjects(): void {
-    // Main screen
-    this.screen = this.add.rectangle(360, 80, 600, 120, 0x000066);
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    // Main screen - make it wider
+    this.screen = this.add.rectangle(width/2, 80, width * 0.8, 120, 0x000066);
     this.physics.add.existing(this.screen, true);
     
-    // Workstations
+    // Workstations - three rows now
     this.workstations = this.add.group();
-    const rows = [280, 400];
-    const desksPerRow = 4;
+    const rows = [height * 0.4, height * 0.6, height * 0.8];
+    const desksPerRow = 8; // More desks per row
     
     rows.forEach(y => {
       for (let i = 0; i < desksPerRow; i++) {
-        const x = 160 + (i * 160);
+        const x = (width * 0.15) + (i * (width * 0.7 / desksPerRow));
         const desk = this.add.rectangle(x, y, 80, 40, 0x333333);
         const terminal = this.add.rectangle(x, y - 10, 40, 20, 0x111111);
         
-        // Add physics bodies to both desk and terminal
         this.physics.add.existing(desk, true);
         this.physics.add.existing(terminal, true);
         
@@ -112,8 +148,8 @@ export class MissionControlScene extends Phaser.Scene {
       }
     });
 
-    // Director's podium
-    this.podium = this.add.rectangle(360, 160, 80, 40, 0x993300);
+    // Director's podium - centered below the main screen
+    this.podium = this.add.rectangle(width/2, height * 0.25, 120, 60, 0x993300);
     this.physics.add.existing(this.podium, true);
   }
 
