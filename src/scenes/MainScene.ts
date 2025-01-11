@@ -12,43 +12,73 @@ export class MainScene extends Phaser.Scene {
   };
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private moveSpeed: number = 400; // Pixels per second
-  private furniture!: Phaser.GameObjects.Group;
+  private map!: Phaser.Tilemaps.Tilemap;
 
   constructor() {
     super({ key: 'MainScene' });
   }
 
   preload(): void {
+    // Load the tilemap and tileset
+    this.load.tilemapTiledJSON('lobby_map', 'assets/lobby_map.json');
+    this.load.image('lobby_tileset', 'assets/office-tileset.png');
+
     // Load the player sprite
     this.load.spritesheet('player', 'assets/player.png', {
       frameWidth: 48,
       frameHeight: 48,
       spacing: 0
     });
-
-    // Load office objects tileset
-    this.load.spritesheet('objects', 'assets/objects.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-      spacing: 0
-    });
   }
 
   create(): void {
-    // Create white tiles
-    this.createTiles();
-
-    // Initialize furniture group
-    this.furniture = this.add.group();
-
-    // Add office objects
-    this.createOfficeObjects();
-
-    // Create player sprite
-    const centerX = this.cameras.main.centerX;
-    const centerY = this.cameras.main.centerY;
+    // Create the tilemap
+    this.map = this.make.tilemap({ 
+      key: 'lobby_map',
+      tileWidth: 32,
+      tileHeight: 32
+    });
     
-    this.player = this.physics.add.sprite(centerX, centerY, 'player');
+    // Add tileset with explicit naming and registration point
+    const tileset = this.map.addTilesetImage(
+      'lobby_tileset',  // This must match the tileset name in your Tiled map
+      'lobby_tileset',  // This must match the key used in this.load.image()
+      32,              // tileWidth
+      32,              // tileHeight
+      0,               // margin
+      0                // spacing
+    )!;
+
+    
+    const collisionLayer = this.map.createLayer(
+      'collission',
+      tileset,
+      0,    // x position
+      0     // y position
+    )!;
+    // Create layers
+    const floorLayer = this.map.createLayer(
+      'Tile Layer 1',
+      tileset,
+      0,    // x position
+      0     // y position
+    )!;
+
+    // Set up collision for specific tiles
+    // Wall tiles are in row 2 (indices 8-15)
+    // Furniture tiles are in row 3 (indices 16-23)
+    collisionLayer.setCollision([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
+
+    // Adjust the visual appearance
+    
+    collisionLayer.setScale(1);
+    floorLayer.setScale(1);
+
+    // Create player sprite at the spawn point
+    const spawnX = this.map.widthInPixels / 2;
+    const spawnY = this.map.heightInPixels / 2;
+    
+    this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
     this.player.setScale(2);
     
     // Set proper collision bounds
@@ -109,20 +139,27 @@ export class MainScene extends Phaser.Scene {
     this.playerState.targetX = this.player.x;
     this.playerState.targetY = this.player.y;
 
-    // Add collider between player and furniture
-    this.physics.add.collider(this.player, this.furniture);
-
-    // Adjust world bounds to align with grid
-    const gridSize = this.playerState.gridSize;
-    const worldWidth = Math.ceil(this.cameras.main.width / gridSize) * gridSize;
-    const worldHeight = Math.ceil(this.cameras.main.height / gridSize) * gridSize;
-    
-    this.physics.world.setBounds(
-      0,  // Start bounds at 0
-      0,  // Start bounds at 0
-      worldWidth,  // Full width
-      worldHeight  // Full height
+    // Create door at the position from the map
+    const doorX = this.map.widthInPixels / 2 + 128;
+    const doorY = this.map.heightInPixels / 2;
+    this.door = this.add.rectangle(
+      doorX,
+      doorY,
+      32,
+      48,
+      0x8B4513
     );
+    this.physics.add.existing(this.door, true);
+
+    // Add collider between player and collision layer
+    this.physics.add.collider(this.player, collisionLayer);
+
+    // Set up camera to follow player
+    this.cameras.main.startFollow(this.player);
+    this.cameras.main.setZoom(1);
+
+    // Set world bounds to match map size
+    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
     this.player.setCollideWorldBounds(true);
   }
 
@@ -139,25 +176,6 @@ export class MainScene extends Phaser.Scene {
         });
       }
     }
-  }
-
-  private createDebugGrid(): void {
-    const graphics = this.add.graphics();
-    graphics.lineStyle(1, 0x333333, 0.5);
-
-    // Draw vertical lines
-    for (let x = 0; x < this.cameras.main.width; x += this.playerState.gridSize) {
-      graphics.moveTo(x, 0);
-      graphics.lineTo(x, this.cameras.main.height);
-    }
-
-    // Draw horizontal lines
-    for (let y = 0; y < this.cameras.main.height; y += this.playerState.gridSize) {
-      graphics.moveTo(0, y);
-      graphics.lineTo(this.cameras.main.width, y);
-    }
-
-    graphics.stroke();
   }
 
   private snapToGrid(gameObject: Phaser.GameObjects.Sprite): void {
@@ -198,161 +216,49 @@ export class MainScene extends Phaser.Scene {
     this.player.y += Math.sin(angle) * speed * deltaTime;
   }
 
-  private createTiles(): void {
-    const graphics = this.add.graphics();
-    const tileSize = this.playerState.gridSize;
-    const width = this.cameras.main.width;
-    const height = this.cameras.main.height;
-
-    // Fill the entire background with white
-    graphics.fillStyle(0xFFFFFF);
-    graphics.fillRect(0, 0, width, height);
-
-    // Draw slightly darker grid lines
-    graphics.lineStyle(1, 0xEEEEEE);
-
-    // Draw vertical lines
-    for (let x = 0; x <= width; x += tileSize) {
-      graphics.moveTo(x, 0);
-      graphics.lineTo(x, height);
-    }
-
-    // Draw horizontal lines
-    for (let y = 0; y <= height; y += tileSize) {
-      graphics.moveTo(0, y);
-      graphics.lineTo(width, y);
-    }
-
-    graphics.stroke();
-  }
-
-  private createOfficeObjects(): void {
-    const centerX = this.cameras.main.centerX;
-    const centerY = this.cameras.main.centerY;
-    const margin = 80; // Margin from the edges
-
-    // Add bookshelves at the corners
-    // Top-left bookshelf
-    this.add.image(margin, margin, 'objects', 4); // Using frame 1 for bookshelf
-
-    // Top-right bookshelf
-    this.add.image(this.cameras.main.width - margin, margin, 'objects', 4);
-
-    // Bottom-left bookshelf
-    this.add.image(margin, this.cameras.main.height - margin, 'objects', 4);
-
-    // Bottom-right bookshelf
-    this.add.image(this.cameras.main.width - margin, this.cameras.main.height - margin, 'objects', 4);
-
-    // Create door with physics body
-    this.door = this.add.rectangle(
-      centerX + 128,
-      centerY,
-      32,
-      48,
-      0x8B4513
-    );
-    this.physics.add.existing(this.door, true);
-
-    // Create collision objects for the furniture
-    this.createFurnitureCollision();
-  }
-
-  private createFurnitureCollision(): void {
-    const margin = 80;
-
-    // Add collision for bookshelves
-    // Top-left bookshelf
-    const bookshelf1 = this.add.rectangle(margin, margin, 32, 32, 0x000000, 0);
-    this.physics.add.existing(bookshelf1, true);
-    this.furniture.add(bookshelf1);
-
-    // Top-right bookshelf
-    const bookshelf2 = this.add.rectangle(this.cameras.main.width - margin, margin, 32, 32, 0x000000, 0);
-    this.physics.add.existing(bookshelf2, true);
-    this.furniture.add(bookshelf2);
-
-    // Bottom-left bookshelf
-    const bookshelf3 = this.add.rectangle(margin, this.cameras.main.height - margin, 32, 32, 0x000000, 0);
-    this.physics.add.existing(bookshelf3, true);
-    this.furniture.add(bookshelf3);
-
-    // Bottom-right bookshelf
-    const bookshelf4 = this.add.rectangle(this.cameras.main.width - margin, this.cameras.main.height - margin, 32, 32, 0x000000, 0);
-    this.physics.add.existing(bookshelf4, true);
-    this.furniture.add(bookshelf4);
-  }
-
   private canMove(targetX: number, targetY: number): boolean {
-    // Create a temporary rectangle representing the player's next position
-    const bounds = new Phaser.Geom.Rectangle(
-      targetX - this.player.body.width/2,
-      targetY - this.player.body.height/2,
-      this.player.body.width,
-      this.player.body.height
-    );
-
-    // Check collision with furniture
-    let canMove = true;
-    this.furniture.getChildren().forEach((furniture: any) => {
-      const furnitureBounds = furniture.getBounds();
-      if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, furnitureBounds)) {
-        canMove = false;
-      }
-    });
-
-    return canMove;
+    // Get the tile at the target position
+    const tile = this.map.getTileAtWorldXY(targetX, targetY, true, this.cameras.main, 'collission');
+    
+    // If there's no tile or the tile index is -1 (empty), movement is allowed
+    return !tile || tile.index === -1;
   }
 
   update(): void {
-    // Existing movement code
     if (!this.playerState.isMoving) {
       const gridSize = this.playerState.gridSize;
       let newTargetX = this.player.x;
       let newTargetY = this.player.y;
       let isMovementKeyPressed = false;
       let newAnimation = '';
-      
+
       if (this.cursors.left.isDown) {
         newTargetX = this.player.x - gridSize;
         newAnimation = 'walk-side';
         isMovementKeyPressed = true;
         this.player.setFlipX(true);
-      }
-      else if (this.cursors.right.isDown) {
+      } else if (this.cursors.right.isDown) {
         newTargetX = this.player.x + gridSize;
         newAnimation = 'walk-side';
         isMovementKeyPressed = true;
         this.player.setFlipX(false);
-      }
-      else if (this.cursors.up.isDown) {
+      } else if (this.cursors.up.isDown) {
         newTargetY = this.player.y - gridSize;
         newAnimation = 'walk-up';
         isMovementKeyPressed = true;
-      }
-      else if (this.cursors.down.isDown) {
+      } else if (this.cursors.down.isDown) {
         newTargetY = this.player.y + gridSize;
         newAnimation = 'walk-down';
         isMovementKeyPressed = true;
       }
 
-      // Check if the new position would be within bounds and not colliding with furniture
-      const halfWidth = this.player.body.width / 2;
-      const halfHeight = this.player.body.height / 2;
-      const margin = 0;
-
       if (isMovementKeyPressed &&
-          newTargetX >= margin + halfWidth && 
-          newTargetX <= this.cameras.main.width - margin - halfWidth &&
-          newTargetY >= margin + halfHeight && 
-          newTargetY <= this.cameras.main.height - margin - halfHeight &&
           this.canMove(newTargetX, newTargetY)) {
         this.playerState.targetX = newTargetX;
         this.playerState.targetY = newTargetY;
         this.playerState.isMoving = true;
         this.player.play(newAnimation, true);
       } else if (!isMovementKeyPressed) {
-        // Set idle animation based on last movement
         const currentAnim = this.player.anims.currentAnim?.key || '';
         if (currentAnim.includes('down')) {
           this.player.play('idle-down', true);
@@ -361,7 +267,7 @@ export class MainScene extends Phaser.Scene {
         } else if (currentAnim.includes('side')) {
           this.player.play('idle-side', true);
         } else {
-          this.player.play('idle-down', true); // Default idle
+          this.player.play('idle-down', true);
         }
       }
     }

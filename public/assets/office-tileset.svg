@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Background grid -->
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#666" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="256" height="256" fill="#fff"/>
+  <rect width="256" height="256" fill="url(#grid)"/>
+  
+  <!-- Row 1: Floor Tiles -->
+  <!-- Basic Floor -->
+  <rect x="0" y="0" width="32" height="32" fill="#f0f0f0" stroke="#ddd"/>
+  <circle cx="16" cy="16" r="1" fill="#ddd"/>
+  <!-- Carpet Floor -->
+  <rect x="32" y="0" width="32" height="32" fill="#d6d6e4" stroke="#c6c6d4"/>
+  <path d="M32 0 L64 32 M48 0 L64 16 M32 16 L48 32" stroke="#c6c6d4" stroke-width="0.5"/>
+  <!-- Fancy Floor -->
+  <rect x="64" y="0" width="32" height="32" fill="#e6e6e6" stroke="#ddd"/>
+  <path d="M64 0 L96 32 M80 0 L96 16 M64 16 L80 32" stroke="#ccc" stroke-width="1"/>
+  
+  <!-- Row 2: Wall Tiles -->
+  <!-- Basic Wall -->
+  <rect x="0" y="32" width="32" height="32" fill="#808080" stroke="#666"/>
+  <!-- Wall with Trim -->
+  <rect x="32" y="32" width="32" height="32" fill="#808080" stroke="#666"/>
+  <rect x="32" y="56" width="32" height="8" fill="#606060"/>
+  <!-- Corner Wall -->
+  <rect x="64" y="32" width="32" height="32" fill="#808080" stroke="#666"/>
+  <path d="M64 32 L96 64" stroke="#666" stroke-width="2"/>
+  
+  <!-- Row 3: Furniture -->
+  <!-- Bookshelf -->
+  <rect x="0" y="64" width="32" height="32" fill="#8b4513" stroke="#643200"/>
+  <rect x="2" y="66" width="28" height="4" fill="#964B00"/>
+  <rect x="2" y="72" width="28" height="4" fill="#964B00"/>
+  <rect x="2" y="78" width="28" height="4" fill="#964B00"/>
+  <!-- Computer Desk -->
+  <rect x="32" y="64" width="32" height="32" fill="#a0522d" stroke="#643200"/>
+  <rect x="36" y="68" width="24" height="16" fill="#333"/>
+  <!-- Door -->
+  <rect x="64" y="64" width="32" height="32" fill="#8b4513" stroke="#643200"/>
+  <rect x="68" y="66" width="24" height="28" fill="#964B00"/>
+  <circle cx="88" cy="80" r="2" fill="#ffd700"/>
+  
+  <!-- Row 4: Decorative -->
+  <!-- Plant -->
+  <rect x="0" y="96" width="32" height="32" fill="#228b22" stroke="#006400"/>
+  <circle cx="16" cy="112" r="8" fill="#32cd32"/>
+  <!-- Window -->
+  <rect x="32" y="96" width="32" height="32" fill="#87ceeb" stroke="#4682b4"/>
+  <path d="M32 112 L64 112 M48 96 L48 128" stroke="#4682b4" stroke-width="2"/>
+  <!-- Water Cooler -->
+  <rect x="64" y="96" width="32" height="32" fill="#b0c4de" stroke="#4682b4"/>
+  <rect x="72" y="104" width="16" height="20" fill="#f0f8ff"/>
+  
+  <!-- Row 5: Special Tiles -->
+  <!-- Computer Screen -->
+  <rect x="0" y="128" width="32" height="32" fill="#000" stroke="#333"/>
+  <rect x="2" y="130" width="28" height="20" fill="#00ff00"/>
+  <!-- Filing Cabinet -->
+  <rect x="32" y="128" width="32" height="32" fill="#708090" stroke="#2f4f4f"/>
+  <rect x="34" y="132" width="28" height="6" fill="#778899"/>
+  <rect x="34" y="140" width="28" height="6" fill="#778899"/>
+  <!-- Chair -->
+  <rect x="64" y="128" width="32" height="32" fill="#4682b4" stroke="#27408b"/>
+  <rect x="72" y="136" width="16" height="16" fill="#27408b"/>
+</svg>
