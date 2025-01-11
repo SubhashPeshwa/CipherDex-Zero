@@ -13,6 +13,9 @@ export class MainScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private moveSpeed: number = 400; // Pixels per second
   private map!: Phaser.Tilemaps.Tilemap;
+  private minimapCamera!: Phaser.Cameras.Scene2D.Camera;
+  private minimapBorder!: Phaser.GameObjects.Graphics;
+  private minimapContainer!: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -154,9 +157,19 @@ export class MainScene extends Phaser.Scene {
     // Add collider between player and collision layer
     this.physics.add.collider(this.player, collisionLayer);
 
-    // Set up camera to follow player
+    // Set up camera to follow player with proper bounds
     this.cameras.main.startFollow(this.player);
-    this.cameras.main.setZoom(1);
+    this.cameras.main.setZoom(1); // Start with base zoom
+    
+    // Set bounds to match map size
+    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    
+    // Create minimap UI
+    this.createMinimap();
+    
+    // Add dynamic zoom based on screen size
+    this.scale.on('resize', this.resize, this);
+    this.resize();
 
     // Set world bounds to match map size
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
@@ -274,5 +287,66 @@ export class MainScene extends Phaser.Scene {
 
     this.moveTowardTarget();
     this.checkDoorOverlap();
+  }
+
+  private createMinimap(): void {
+    const minimapWidth = 300;
+    const minimapHeight = 200;
+    const padding = 15;
+    const x = this.scale.width - minimapWidth - padding;
+    const y = padding;
+
+    // Create a container for minimap elements
+    this.minimapContainer = this.add.container(x, y);
+    this.minimapContainer.setScrollFactor(0);
+
+    // Create background rectangle
+    const background = this.add.rectangle(0, 0, minimapWidth, minimapHeight, 0x002244);
+    this.minimapContainer.add(background);
+
+    // Create borders
+    this.minimapBorder = this.add.graphics();
+    // White border
+    // this.minimapBorder.lineStyle(2, 0xffffff);
+    // this.minimapBorder.strokeRect(0, 0, minimapWidth, minimapHeight);
+    
+    this.minimapContainer.add(this.minimapBorder);
+
+    // Create minimap camera
+    this.minimapCamera = this.cameras.add(x, y, minimapWidth, minimapHeight);
+    this.minimapCamera.setZoom(0.15);
+    this.minimapCamera.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.minimapCamera.startFollow(this.player);
+    this.minimapCamera.setName('minimap');
+  }
+
+  private resize(): void {
+    const camera = this.cameras.main;
+    const gameWidth = this.scale.gameSize.width;
+    const gameHeight = this.scale.gameSize.height;
+    
+    // Calculate zoom to fit the map while maintaining pixel art clarity
+    const zoomX = gameWidth / (this.map.widthInPixels / 1.5);
+    const zoomY = gameHeight / (this.map.heightInPixels / 1.5);
+    const zoom = Math.min(zoomX, zoomY, 1.5);
+    
+    camera.setZoom(Math.max(0.3, zoom));
+
+    // Update minimap position
+    const minimapWidth = 300;
+    const minimapHeight = 200;
+    const padding = 15;
+    const x = gameWidth - minimapWidth - padding;
+    const y = padding;
+
+    // Update container position
+    this.minimapContainer.setPosition(x, y);
+    
+    // Update camera position
+    this.minimapCamera.setPosition(x, y);
+  }
+
+  shutdown(): void {
+    this.scale.off('resize', this.resize, this);
   }
 }
