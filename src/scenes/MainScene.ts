@@ -161,8 +161,16 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player);
     this.cameras.main.setZoom(1); // Start with base zoom
     
-    // Set bounds to match map size
-    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    // Remove camera bounds to allow viewing beyond map edges
+    this.cameras.main.setBounds(
+      -this.map.widthInPixels, 
+      -this.map.widthInPixels, 
+      this.map.widthInPixels * 3, 
+      this.map.widthInPixels * 3
+    );
+    
+    // Force player to stay centered by setting deadzone to 0
+    this.cameras.main.setDeadzone(0, 0);
     
     // Create minimap UI
     this.createMinimap();
@@ -301,8 +309,8 @@ export class MainScene extends Phaser.Scene {
     this.minimapContainer.setScrollFactor(0);
 
     // Create background rectangle
-    const background = this.add.rectangle(0, 0, minimapWidth, minimapHeight, 0x002244);
-    this.minimapContainer.add(background);
+    // const background = this.add.rectangle(0, 0, minimapWidth, minimapHeight, 0x002244);
+    // this.minimapContainer.add(background);
 
     // Create borders
     this.minimapBorder = this.add.graphics();
