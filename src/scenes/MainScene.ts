@@ -3,7 +3,6 @@ import { PlayerState } from '../types/player';
 
 export class MainScene extends Phaser.Scene {
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-  private door!: Phaser.GameObjects.Rectangle;
   private playerState: PlayerState = {
     isMoving: false,
     targetX: 0,
@@ -37,6 +36,12 @@ export class MainScene extends Phaser.Scene {
   private office3Tileset!: Phaser.Tilemaps.Tileset;
   private office4Tileset!: Phaser.Tilemaps.Tileset;
   private officeMainTileset!: Phaser.Tilemaps.Tileset;
+  // Floor tile properties
+  private floorPurpleTileset!: Phaser.Tilemaps.Tileset;
+  private floorPinkTileset!: Phaser.Tilemaps.Tileset;
+  private floorGreenTileset!: Phaser.Tilemaps.Tileset;
+  private floorGrayTileset!: Phaser.Tilemaps.Tileset;
+  private floorBrownTileset!: Phaser.Tilemaps.Tileset;
 
   // Layer properties
   private baseLayer!: Phaser.Tilemaps.TilemapLayer;
@@ -75,6 +80,13 @@ export class MainScene extends Phaser.Scene {
     this.load.image('office3', 'assets/items/GK_JO_A5.png');
     this.load.image('office4', 'assets/items/GK_JO_A2.png');
     this.load.image('office_main', 'assets/items/MainTileMap.png');
+
+    // Load floor tile images
+    this.load.image('floor_purple', 'assets/items/Purple.png');
+    this.load.image('floor_pink', 'assets/items/Pink.png');
+    this.load.image('floor_green', 'assets/items/Green.png');
+    this.load.image('floor_gray', 'assets/items/Gray.png');
+    this.load.image('floor_brown', 'assets/items/Brown.png');
 
     // Load the player sprite
     this.load.spritesheet('player', 'assets/player.png', {
@@ -138,6 +150,13 @@ export class MainScene extends Phaser.Scene {
     this.office3Tileset = this.map.addTilesetImage('office3', 'office3')!;
     this.office4Tileset = this.map.addTilesetImage('office4', 'office4')!;
     this.officeMainTileset = this.map.addTilesetImage('officeMainTileMap', 'office_main')!;
+    
+    // Initialize floor tilesets
+    this.floorPurpleTileset = this.map.addTilesetImage('floor_Purple', 'floor_purple')!;
+    this.floorPinkTileset = this.map.addTilesetImage('floor_Pink', 'floor_pink')!;
+    this.floorGreenTileset = this.map.addTilesetImage('floor_Green', 'floor_green')!;
+    this.floorGrayTileset = this.map.addTilesetImage('floor_Gray', 'floor_gray')!;
+    this.floorBrownTileset = this.map.addTilesetImage('floor_Brown', 'floor_brown')!;
   }
 
   private getAllTilesets(): Phaser.Tilemaps.Tileset[] {
@@ -159,7 +178,12 @@ export class MainScene extends Phaser.Scene {
       this.office2Tileset,
       this.office3Tileset,
       this.office4Tileset,
-      this.officeMainTileset
+      this.officeMainTileset,
+      this.floorPurpleTileset,
+      this.floorPinkTileset,
+      this.floorGreenTileset,
+      this.floorGrayTileset,
+      this.floorBrownTileset
     ];
   }
 
@@ -251,21 +275,6 @@ export class MainScene extends Phaser.Scene {
     this.playerState.targetX = this.player.x;
     this.playerState.targetY = this.player.y;
 
-    // Create door at the position from the map
-    const doorX = this.map.widthInPixels / 2 + 128;
-    const doorY = this.map.heightInPixels / 2;
-    this.door = this.add.rectangle(
-      doorX,
-      doorY,
-      32,
-      48,
-      0x8B4513
-    );
-    this.physics.add.existing(this.door, true);
-
-    // Add collider between player and collision layer
-    this.physics.add.collider(this.player, this.collisionLayer);
-
     // Play idle-down animation by default
     this.player.play('idle-down');
   }
@@ -319,21 +328,6 @@ export class MainScene extends Phaser.Scene {
     // Adjust the visual appearance
     this.collisionLayer.setScale(1);
     this.floorLayer.setScale(1);
-  }
-
-  private checkDoorOverlap(): void {
-    if (!this.playerState.isMoving) {
-      const playerBounds = this.player.getBounds();
-      const doorBounds = this.door.getBounds();
-
-      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, doorBounds)) {
-        this.scene.start('MissionControlScene', { 
-          fromDoor: true,
-          playerX: 360,
-          playerY: 400
-        });
-      }
-    }
   }
 
   private snapToGrid(gameObject: Phaser.GameObjects.Sprite): void {
@@ -431,7 +425,6 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.moveTowardTarget();
-    this.checkDoorOverlap();
   }
 
   private createMinimap(): void {

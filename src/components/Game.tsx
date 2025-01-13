@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { MainScene } from '../scenes/MainScene';
-import { MissionControlScene } from '../scenes/MissionControlScene';
 import { LoadingScene } from '../scenes/LoadingScene';
 
 const Game: React.FC = () => {
@@ -32,7 +31,7 @@ const Game: React.FC = () => {
           debugBodyColor: 0xff00ff
         }
       },
-      scene: [MainScene, MissionControlScene]
+      scene: [MainScene]
     };
 
     const game = new Phaser.Game(config);
