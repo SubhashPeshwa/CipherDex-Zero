@@ -281,7 +281,7 @@ export class MainScene extends Phaser.Scene {
     const spawnY = this.map.heightInPixels / 2;
     
     this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
-    this.player.setScale(1.5);
+    this.player.setScale(1);
     
     // Set proper collision bounds
     this.player.body.setSize(32, 32);  // Match grid size
@@ -433,11 +433,11 @@ export class MainScene extends Phaser.Scene {
     const gameHeight = this.scale.gameSize.height;
     
     // Calculate zoom to fit the map while maintaining pixel art clarity
-    const zoomX = gameWidth / (this.map.widthInPixels / 1.5);
-    const zoomY = gameHeight / (this.map.heightInPixels / 1.5);
-    const zoom = Math.min(zoomX, zoomY, 1.5);
+    const zoomX = gameWidth / (this.map.widthInPixels / 2.625);
+    const zoomY = gameHeight / (this.map.heightInPixels / 2.625);
+    const zoom = Math.min(zoomX, zoomY, 2.625);
     
-    camera.setZoom(Math.max(0.3, zoom));
+    camera.setZoom(Math.max(0.525, zoom));
 
     // Update minimap position
     const minimapWidth = 300;
