@@ -15,6 +15,10 @@ export class MainScene extends Phaser.Scene {
   private minimapCamera!: Phaser.Cameras.Scene2D.Camera;
   private minimapBorder!: Phaser.GameObjects.Graphics;
   private minimapContainer!: Phaser.GameObjects.Container;
+  private spaceKey!: Phaser.Input.Keyboard.Key;
+  private interactiveObjects!: Phaser.GameObjects.Group;
+  private dialogBox!: Phaser.GameObjects.Container;
+  private isDialogVisible: boolean = false;
 
   // Tileset properties
   private tileset!: Phaser.Tilemaps.Tileset;
@@ -51,6 +55,9 @@ export class MainScene extends Phaser.Scene {
   private objectsLayer!: Phaser.Tilemaps.TilemapLayer;
   private collisionLayer!: Phaser.Tilemaps.TilemapLayer;
   private interactiveLayer!: Phaser.Tilemaps.TilemapLayer;
+
+  private enterKey!: Phaser.Input.Keyboard.Key;
+  private escapeKey!: Phaser.Input.Keyboard.Key;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -94,6 +101,17 @@ export class MainScene extends Phaser.Scene {
       frameHeight: 48,
       spacing: 0
     });
+
+    // Initialize spacebar key
+    if (this.input.keyboard) {
+      this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    }
+
+    // Initialize keyboard keys
+    if (this.input.keyboard) {
+      this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+      this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    }
   }
 
   create(): void {
@@ -103,6 +121,8 @@ export class MainScene extends Phaser.Scene {
     this.setupAnimations();
     this.setupCamera();
     this.createMinimap();
+    this.createDialogBox();
+    this.setupInteractiveObjects();
     
     // Set up camera to follow player with proper bounds
     this.cameras.main.startFollow(this.player);
@@ -376,57 +396,6 @@ export class MainScene extends Phaser.Scene {
     return !tile || tile.index === -1;
   }
 
-  update(): void {
-    if (!this.playerState.isMoving) {
-      const gridSize = this.playerState.gridSize;
-      let newTargetX = this.player.x;
-      let newTargetY = this.player.y;
-      let isMovementKeyPressed = false;
-      let newAnimation = '';
-
-      if (this.cursors.left.isDown) {
-        newTargetX = this.player.x - gridSize;
-        newAnimation = 'walk-side';
-        isMovementKeyPressed = true;
-        this.player.setFlipX(true);
-      } else if (this.cursors.right.isDown) {
-        newTargetX = this.player.x + gridSize;
-        newAnimation = 'walk-side';
-        isMovementKeyPressed = true;
-        this.player.setFlipX(false);
-      } else if (this.cursors.up.isDown) {
-        newTargetY = this.player.y - gridSize;
-        newAnimation = 'walk-up';
-        isMovementKeyPressed = true;
-      } else if (this.cursors.down.isDown) {
-        newTargetY = this.player.y + gridSize;
-        newAnimation = 'walk-down';
-        isMovementKeyPressed = true;
-      }
-
-      if (isMovementKeyPressed &&
-          this.canMove(newTargetX, newTargetY)) {
-        this.playerState.targetX = newTargetX;
-        this.playerState.targetY = newTargetY;
-        this.playerState.isMoving = true;
-        this.player.play(newAnimation, true);
-      } else if (!isMovementKeyPressed) {
-        const currentAnim = this.player.anims.currentAnim?.key || '';
-        if (currentAnim.includes('down')) {
-          this.player.play('idle-down', true);
-        } else if (currentAnim.includes('up')) {
-          this.player.play('idle-up', true);
-        } else if (currentAnim.includes('side')) {
-          this.player.play('idle-side', true);
-        } else {
-          this.player.play('idle-down', true);
-        }
-      }
-    }
-
-    this.moveTowardTarget();
-  }
-
   private createMinimap(): void {
     const minimapWidth = 300;
     const minimapHeight = 200;
@@ -486,5 +455,179 @@ export class MainScene extends Phaser.Scene {
 
   shutdown(): void {
     this.scale.off('resize', this.resize, this);
+  }
+
+  private createDialogBox(): void {
+    // Create a container for the dialog box
+    this.dialogBox = this.add.container(0, 0);
+    this.dialogBox.setScrollFactor(0); // Fix to screen
+
+    const dialogHeight = 100;
+    const dialogWidth = 400; // Fixed width for the dialog box
+    const padding = 20;
+
+    // Create the dialog box background
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x000000, 1); // Changed alpha from 0.8 to 1 for solid background
+
+    // Use absolute screen coordinates
+    const screenHeight = this.scale.displaySize.height;
+    const screenWidth = this.scale.displaySize.width;
+
+    // Calculate center position
+    const x = (screenWidth - dialogWidth) / 2;
+    const y = (screenHeight - dialogHeight) / 2;
+
+    graphics.fillRect(
+      x, 
+      y, 
+      dialogWidth, 
+      dialogHeight
+    );
+    graphics.lineStyle(2, 0xffffff);
+    graphics.strokeRect(
+      x, 
+      y, 
+      dialogWidth, 
+      dialogHeight
+    );
+
+    // Create the text with adjusted positioning
+    const text = this.add.text(x + padding, y + padding, '...', {
+      fontSize: '24px',
+      color: '#ffffff',
+      wordWrap: { width: dialogWidth - (padding * 2) }
+    });
+
+    // Add elements to the container
+    this.dialogBox.add([graphics, text]);
+    this.dialogBox.setVisible(false);
+
+    // Update dialog box position on resize
+    this.scale.on('resize', () => {
+      const newScreenHeight = this.scale.displaySize.height;
+      const newScreenWidth = this.scale.displaySize.width;
+      
+      // Recalculate center position
+      const newX = (newScreenWidth - dialogWidth) / 2;
+      const newY = (newScreenHeight - dialogHeight) / 2;
+      
+      graphics.clear();
+      graphics.fillStyle(0x000000, 1); // Changed alpha from 0.8 to 1 for solid background
+      graphics.fillRect(
+        newX, 
+        newY, 
+        dialogWidth, 
+        dialogHeight
+      );
+      graphics.lineStyle(2, 0xffffff);
+      graphics.strokeRect(
+        newX, 
+        newY, 
+        dialogWidth, 
+        dialogHeight
+      );
+      text.setPosition(newX + padding, newY + padding);
+      text.setWordWrapWidth(dialogWidth - (padding * 2));
+    });
+  }
+
+  private setupInteractiveObjects(): void {
+    // Create a group for interactive objects
+    this.interactiveObjects = this.add.group();
+
+    // Get all interactive objects from the Tiled map
+    const interactiveObjectsLayer = this.map.getObjectLayer('interactive');
+    if (interactiveObjectsLayer && interactiveObjectsLayer.objects) {
+      interactiveObjectsLayer.objects.forEach(obj => {
+        // Create an invisible rectangle for each interactive area
+        const zone = this.add.zone(obj.x!, obj.y!, obj.width!, obj.height!);
+        this.physics.world.enable(zone, Phaser.Physics.Arcade.STATIC_BODY);
+        this.interactiveObjects.add(zone);
+      });
+    }
+  }
+
+  private handleInteraction(): void {
+    if (this.isDialogVisible) {
+      return; // Don't handle new interactions while dialog is visible
+    }
+
+    // Check if player is overlapping with any interactive object
+    let canInteract = false;
+    this.physics.overlap(this.player, this.interactiveObjects, () => {
+      canInteract = true;
+    });
+
+    if (canInteract) {
+      this.dialogBox.setVisible(true);
+      this.isDialogVisible = true;
+    }
+  }
+
+  update(): void {
+    // Handle enter press for interaction
+    if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+      this.handleInteraction();
+    }
+
+    // Handle escape press to close dialog
+    if (this.isDialogVisible && Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
+      this.dialogBox.setVisible(false);
+      this.isDialogVisible = false;
+      return;
+    }
+
+    // Only allow movement if dialog is not visible
+    if (!this.isDialogVisible) {
+      if (!this.playerState.isMoving) {
+        const gridSize = this.playerState.gridSize;
+        let newTargetX = this.player.x;
+        let newTargetY = this.player.y;
+        let isMovementKeyPressed = false;
+        let newAnimation = '';
+
+        if (this.cursors.left.isDown) {
+          newTargetX = this.player.x - gridSize;
+          newAnimation = 'walk-side';
+          isMovementKeyPressed = true;
+          this.player.setFlipX(true);
+        } else if (this.cursors.right.isDown) {
+          newTargetX = this.player.x + gridSize;
+          newAnimation = 'walk-side';
+          isMovementKeyPressed = true;
+          this.player.setFlipX(false);
+        } else if (this.cursors.up.isDown) {
+          newTargetY = this.player.y - gridSize;
+          newAnimation = 'walk-up';
+          isMovementKeyPressed = true;
+        } else if (this.cursors.down.isDown) {
+          newTargetY = this.player.y + gridSize;
+          newAnimation = 'walk-down';
+          isMovementKeyPressed = true;
+        }
+
+        if (isMovementKeyPressed &&
+            this.canMove(newTargetX, newTargetY)) {
+          this.playerState.targetX = newTargetX;
+          this.playerState.targetY = newTargetY;
+          this.playerState.isMoving = true;
+          this.player.play(newAnimation, true);
+        } else if (!isMovementKeyPressed) {
+          const currentAnim = this.player.anims.currentAnim?.key || '';
+          if (currentAnim.includes('down')) {
+            this.player.play('idle-down', true);
+          } else if (currentAnim.includes('up')) {
+            this.player.play('idle-up', true);
+          } else if (currentAnim.includes('side')) {
+            this.player.play('idle-side', true);
+          } else {
+            this.player.play('idle-down', true);
+          }
+        }
+      }
+
+      this.moveTowardTarget();
+    }
   }
 }
