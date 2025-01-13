@@ -19,6 +19,7 @@ export class MainScene extends Phaser.Scene {
   private interactiveObjects!: Phaser.GameObjects.Group;
   private dialogBox!: Phaser.GameObjects.Container;
   private isDialogVisible: boolean = false;
+  private backgroundMusic!: Phaser.Sound.BaseSound;
 
   // Tileset properties
   private tileset!: Phaser.Tilemaps.Tileset;
@@ -72,6 +73,9 @@ export class MainScene extends Phaser.Scene {
     this.load.image('objects', 'assets/objects.png');
     this.load.image('objects2', 'assets/objects2.png');
     
+    // Load background music
+    this.load.audio('intro_music', 'assets/music/intro.mp3');
+
     // Load additional tileset images
     this.load.image('rotary_phones', 'assets/items/Rotary Phones.png');
     this.load.image('water_cooler', 'assets/items/Water Cooler.png');
@@ -161,6 +165,13 @@ export class MainScene extends Phaser.Scene {
     this.setupInteractiveObjects();
     this.setupNPCs();
     
+    // Initialize and play background music
+    this.backgroundMusic = this.sound.add('intro_music', {
+      volume: 0.5,
+      loop: true
+    });
+    this.backgroundMusic.play();
+
     // Set up camera to follow player with proper bounds
     this.cameras.main.startFollow(this.player);
     this.cameras.main.setZoom(1);
@@ -498,6 +509,7 @@ export class MainScene extends Phaser.Scene {
     // Create a container for the dialog box
     this.dialogBox = this.add.container(0, 0);
     this.dialogBox.setScrollFactor(0); // Fix to screen
+    this.dialogBox.setDepth(1000); // Ensure dialog is above everything
 
     const dialogHeight = 100;
     const dialogWidth = 400; // Fixed width for the dialog box
@@ -585,20 +597,77 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  private pauseNPCs(): void {
+    this.npcs.forEach(npc => {
+      npc.setVelocity(0, 0);
+      const npcType = npc.getData('type');
+      // Set idle frame based on facing direction
+      const positions = npc.getData('positions') as Phaser.Types.Math.Vector2Like[];
+      const currentPoint = npc.getData('currentPoint') as number;
+      const nextPoint = positions[(currentPoint + 1) % positions.length];
+      if (nextPoint && nextPoint.x > npc.x) {
+        npc.setFrame(3); // stand right
+      } else {
+        npc.setFrame(1); // stand left
+      }
+    });
+  }
+
+  private resumeNPCs(): void {
+    this.npcs.forEach(npc => {
+      const npcType = npc.getData('type');
+      const positions = npc.getData('positions') as Phaser.Types.Math.Vector2Like[];
+      const currentPoint = npc.getData('currentPoint') as number;
+      const nextPoint = positions[(currentPoint + 1) % positions.length];
+      
+      if (nextPoint.x > npc.x) {
+        npc.anims.play(`${npcType}_walk_right`, true);
+        npc.setFlipX(false);
+      } else {
+        npc.anims.play(`${npcType}_walk_left`, true);
+        npc.setFlipX(false);
+      }
+    });
+  }
+
   private handleInteraction(): void {
     if (this.isDialogVisible) {
       return; // Don't handle new interactions while dialog is visible
     }
 
-    // Check if player is overlapping with any interactive object
+    // Check if player is overlapping with any interactive object or NPC
     let canInteract = false;
+    let interactionText = 'Press ESC to close';
+
+    // Check interactive objects
     this.physics.overlap(this.player, this.interactiveObjects, () => {
       canInteract = true;
     });
 
+    // Check NPCs
+    this.npcs.forEach(npc => {
+      const distance = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        npc.x,
+        npc.y
+      );
+
+      if (distance < 48) { // Within interaction range (1.5 tiles)
+        canInteract = true;
+        const npcType = npc.getData('type');
+        interactionText = `Hello! I'm ${npcType}.\nPress ESC to close`;
+      }
+    });
+
     if (canInteract) {
+      // Get the text object from the dialog box
+      const dialogText = this.dialogBox.getAt(1) as Phaser.GameObjects.Text;
+      dialogText.setText(interactionText);
+      
       this.dialogBox.setVisible(true);
       this.isDialogVisible = true;
+      this.pauseNPCs(); // Pause NPCs when dialog appears
     }
   }
 
@@ -627,9 +696,24 @@ export class MainScene extends Phaser.Scene {
       if (positions.length >= 2) {
         // Create NPC sprite
         const npc = this.physics.add.sprite(positions[0].x, positions[0].y, npcType);
+        npc.setDepth(1); // Set a low depth for NPCs
         npc.setData('type', npcType);
         npc.setData('currentPoint', 0);
         npc.setData('positions', positions);
+        
+        // Set up collision bounds for NPC
+        npc.body.setSize(32, 32);  // Match grid size
+        npc.body.setOffset(8, 8);  // Center the collision box
+        npc.body.setImmovable(true); // Make NPCs immovable so they don't push the player
+        
+        // Add collision between this NPC and the player
+        this.physics.add.collider(this.player, npc, () => {
+          // Stop player movement when colliding with NPC
+          this.playerState.isMoving = false;
+          this.player.setVelocity(0, 0);
+          this.player.x = this.playerState.targetX;
+          this.player.y = this.playerState.targetY;
+        });
         
         // Set up animations for this NPC
         if (!this.anims.exists(`${npcType}_walk_left`)) {
@@ -675,6 +759,7 @@ export class MainScene extends Phaser.Scene {
     if (this.isDialogVisible && Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
       this.dialogBox.setVisible(false);
       this.isDialogVisible = false;
+      this.resumeNPCs(); // Resume NPCs when dialog closes
       return;
     }
 
