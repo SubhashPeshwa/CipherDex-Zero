@@ -635,8 +635,8 @@ export class MainScene extends Phaser.Scene {
         if (!this.anims.exists(`${npcType}_walk_left`)) {
           this.anims.create({
             key: `${npcType}_walk_left`,
-            frames: this.anims.generateFrameNumbers(npcType, { frames: [3, 7, 11, 15] }),
-            frameRate: 10,
+            frames: this.anims.generateFrameNumbers(npcType, { frames: [1, 5, 9, 13] }),
+            frameRate: 8,
             repeat: -1
           });
         }
@@ -645,7 +645,7 @@ export class MainScene extends Phaser.Scene {
           this.anims.create({
             key: `${npcType}_walk_right`,
             frames: this.anims.generateFrameNumbers(npcType, { frames: [3, 7, 11, 15] }),
-            frameRate: 10,
+            frameRate: 8,
             repeat: -1
           });
         }
@@ -740,6 +740,14 @@ export class MainScene extends Phaser.Scene {
 
       if (currentTime - lastMoveTime < 2000) {
         npc.setVelocity(0, 0);
+        // Set idle frame based on facing direction
+        const nextPoint = (currentPoint + 1) % positions.length;
+        const nextPos = positions[nextPoint];
+        if (nextPos.x > npc.x) {
+          npc.setFrame(3); // stand right
+        } else {
+          npc.setFrame(1); // stand left
+        }
         return;
       }
 
