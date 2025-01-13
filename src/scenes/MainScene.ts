@@ -8,14 +8,44 @@ export class MainScene extends Phaser.Scene {
     isMoving: false,
     targetX: 0,
     targetY: 0,
-    gridSize: 32 // Size of each grid cell
+    gridSize: 32
   };
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private moveSpeed: number = 400; // Pixels per second
+  private moveSpeed: number = 400;
   private map!: Phaser.Tilemaps.Tilemap;
   private minimapCamera!: Phaser.Cameras.Scene2D.Camera;
   private minimapBorder!: Phaser.GameObjects.Graphics;
   private minimapContainer!: Phaser.GameObjects.Container;
+
+  // Tileset properties
+  private tileset!: Phaser.Tilemaps.Tileset;
+  private objectsTileset!: Phaser.Tilemaps.Tileset;
+  private objects2Tileset!: Phaser.Tilemaps.Tileset;
+  private rotaryPhonesTileset!: Phaser.Tilemaps.Tileset;
+  private waterCoolerTileset!: Phaser.Tilemaps.Tileset;
+  private tvWidescreenTileset!: Phaser.Tilemaps.Tileset;
+  private sciFiDecorTileset!: Phaser.Tilemaps.Tileset;
+  private megaPixelIconsTileset!: Phaser.Tilemaps.Tileset;
+  private laptopTileset!: Phaser.Tilemaps.Tileset;
+  private freePixelTileset!: Phaser.Tilemaps.Tileset;
+  private deskOrnateTileset!: Phaser.Tilemaps.Tileset;
+  private copyMachineTileset!: Phaser.Tilemaps.Tileset;
+  private cardTableTileset!: Phaser.Tilemaps.Tileset;
+  private pixelOfficeTileset!: Phaser.Tilemaps.Tileset;
+  private officeTilesTileset!: Phaser.Tilemaps.Tileset;
+  private office2Tileset!: Phaser.Tilemaps.Tileset;
+  private office3Tileset!: Phaser.Tilemaps.Tileset;
+  private office4Tileset!: Phaser.Tilemaps.Tileset;
+  private officeMainTileset!: Phaser.Tilemaps.Tileset;
+
+  // Layer properties
+  private baseLayer!: Phaser.Tilemaps.TilemapLayer;
+  private floor2Layer!: Phaser.Tilemaps.TilemapLayer;
+  private floorLayer!: Phaser.Tilemaps.TilemapLayer;
+  private furnitureLayer!: Phaser.Tilemaps.TilemapLayer;
+  private objectsLayer!: Phaser.Tilemaps.TilemapLayer;
+  private collisionLayer!: Phaser.Tilemaps.TilemapLayer;
+  private interactiveLayer!: Phaser.Tilemaps.TilemapLayer;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -35,12 +65,16 @@ export class MainScene extends Phaser.Scene {
     this.load.image('sci_fi_decor', 'assets/items/sci fi (decor assets) assets.png');
     this.load.image('mega_pixel_icons', 'assets/items/MegaPixelArt32x32pxIcons_SpriteSheet.png');
     this.load.image('laptop', 'assets/items/Laptop.png');
-    this.load.image('full_decor', 'assets/items/full decor tiles.png');
     this.load.image('free_pixel', 'assets/items/FreePixel.png');
     this.load.image('desk_ornate', 'assets/items/Desk, Ornate.png');
     this.load.image('copy_machine', 'assets/items/Copy Machine.png');
     this.load.image('card_table', 'assets/items/Card Table.png');
-    this.load.image('nsa_office_tileset', 'assets/items/nsa-office-3d-tileset.png');
+    this.load.image('pixel_office', 'assets/items/PixelOfficeAssets.png');
+    this.load.image('office_tiles', 'assets/items/GK_JO_C.png');
+    this.load.image('office2', 'assets/items/GK_JO_B.png');
+    this.load.image('office3', 'assets/items/GK_JO_A5.png');
+    this.load.image('office4', 'assets/items/GK_JO_A2.png');
+    this.load.image('office_main', 'assets/items/MainTileMap.png');
 
     // Load the player sprite
     this.load.spritesheet('player', 'assets/player.png', {
@@ -51,105 +85,153 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Create the tilemap
+    this.initializeTilesets();
+    this.createLayers();
+    this.setupPlayer();
+    this.setupAnimations();
+    this.setupCamera();
+    this.createMinimap();
+    
+    // Set up camera to follow player with proper bounds
+    this.cameras.main.startFollow(this.player);
+    this.cameras.main.setZoom(1);
+    this.cameras.main.setBounds(
+      -this.map.widthInPixels,
+      -this.map.widthInPixels,
+      this.map.widthInPixels * 3,
+      this.map.widthInPixels * 3
+    );
+    this.cameras.main.setDeadzone(0, 0);
+
+    // Add dynamic zoom based on screen size
+    this.scale.on('resize', this.resize, this);
+    this.resize();
+
+    // Set world bounds
+    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.player.setCollideWorldBounds(true);
+  }
+
+  private initializeTilesets(): void {
     this.map = this.make.tilemap({ 
       key: 'lobby_map',
       tileWidth: 32,
       tileHeight: 32
     });
-    
-    // Add tileset with explicit naming and registration point
-    const tileset = this.map.addTilesetImage(
-      'lobby_tileset',  // This must match the tileset name in your Tiled map
-      'lobby_tileset',  // This must match the key used in this.load.image()
-      32,              // tileWidth
-      32,              // tileHeight
-      0,               // margin
-      0                // spacing
-    )!;
 
-    // Add objects tileset
-    const objectsTileset = this.map.addTilesetImage(
-      'objects',
-      'objects',
-      32,
-      32,
-      0,
-      0
-    )!;
+    this.tileset = this.map.addTilesetImage('lobby_tileset', 'lobby_tileset')!;
+    this.objectsTileset = this.map.addTilesetImage('objects', 'objects')!;
+    this.objects2Tileset = this.map.addTilesetImage('objects2', 'objects2')!;
+    this.rotaryPhonesTileset = this.map.addTilesetImage('Rotary Phones', 'rotary_phones')!;
+    this.waterCoolerTileset = this.map.addTilesetImage('Water Cooler', 'water_cooler')!;
+    this.tvWidescreenTileset = this.map.addTilesetImage('TV, Widescreen', 'tv_widescreen')!;
+    this.sciFiDecorTileset = this.map.addTilesetImage('sci fi (decor assets) assets', 'sci_fi_decor')!;
+    this.megaPixelIconsTileset = this.map.addTilesetImage('MegaPixelArt32x32pxIcons_SpriteSheet', 'mega_pixel_icons')!;
+    this.laptopTileset = this.map.addTilesetImage('Laptop', 'laptop')!;
+    this.freePixelTileset = this.map.addTilesetImage('FreePixel', 'free_pixel')!;
+    this.deskOrnateTileset = this.map.addTilesetImage('Desk, Ornate', 'desk_ornate')!;
+    this.copyMachineTileset = this.map.addTilesetImage('Copy Machine', 'copy_machine')!;
+    this.cardTableTileset = this.map.addTilesetImage('Card Table', 'card_table')!;
+    this.pixelOfficeTileset = this.map.addTilesetImage('PixelOfficeAssets', 'pixel_office')!;
+    this.officeTilesTileset = this.map.addTilesetImage('officetiles', 'office_tiles')!;
+    this.office2Tileset = this.map.addTilesetImage('office2', 'office2')!;
+    this.office3Tileset = this.map.addTilesetImage('office3', 'office3')!;
+    this.office4Tileset = this.map.addTilesetImage('office4', 'office4')!;
+    this.officeMainTileset = this.map.addTilesetImage('officeMainTileMap', 'office_main')!;
+  }
 
-    // Add objects2 tileset
-    const objects2Tileset = this.map.addTilesetImage(
-      'objects2',
-      'objects2',
-      32,
-      32,
-      0,
-      0
-    )!;
+  private getAllTilesets(): Phaser.Tilemaps.Tileset[] {
+    return [
+      this.objectsTileset,
+      this.objects2Tileset,
+      this.rotaryPhonesTileset,
+      this.waterCoolerTileset,
+      this.tvWidescreenTileset,
+      this.sciFiDecorTileset,
+      this.megaPixelIconsTileset,
+      this.laptopTileset,
+      this.freePixelTileset,
+      this.deskOrnateTileset,
+      this.copyMachineTileset,
+      this.cardTableTileset,
+      this.pixelOfficeTileset,
+      this.officeTilesTileset,
+      this.office2Tileset,
+      this.office3Tileset,
+      this.office4Tileset,
+      this.officeMainTileset
+    ];
+  }
 
-    // Add additional tilesets
-    const rotaryPhonesTileset = this.map.addTilesetImage('Rotary Phones', 'rotary_phones')!;
-    const waterCoolerTileset = this.map.addTilesetImage('Water Cooler', 'water_cooler')!;
-    const tvWidescreenTileset = this.map.addTilesetImage('TV, Widescreen', 'tv_widescreen')!;
-    const sciFiDecorTileset = this.map.addTilesetImage('sci fi (decor assets) assets', 'sci_fi_decor')!;
-    const megaPixelIconsTileset = this.map.addTilesetImage('MegaPixelArt32x32pxIcons_SpriteSheet', 'mega_pixel_icons')!;
-    const laptopTileset = this.map.addTilesetImage('Laptop', 'laptop')!;
-    const fullDecorTileset = this.map.addTilesetImage('full decor tiles', 'full_decor')!;
-    const freePixelTileset = this.map.addTilesetImage('FreePixel', 'free_pixel')!;
-    const deskOrnateTileset = this.map.addTilesetImage('Desk, Ornate', 'desk_ornate')!;
-    const copyMachineTileset = this.map.addTilesetImage('Copy Machine', 'copy_machine')!;
-    const cardTableTileset = this.map.addTilesetImage('Card Table', 'card_table')!;
-    const nsaOfficeTileset = this.map.addTilesetImage('nsa-office-3d-tileset', 'nsa_office_tileset')!;
+  private createLayers(): void {
 
-    const collisionLayer = this.map.createLayer(
+    // Create collision layer
+    this.collisionLayer = this.map.createLayer(
       'collission',
-      tileset,
-      0,    // x position
-      0     // y position
-    )!;
-    // Create layers
-    const floorLayer = this.map.createLayer(
-      'Tile Layer 1',
-      tileset,
-      0,    // x position
-      0     // y position
+      [this.tileset, ...this.getAllTilesets()],
+      0,
+      0
     )!;
 
-    // Create furniture layer with all tilesets
-    const furnitureLayer = this.map.createLayer(
+    // Create base layer
+    this.baseLayer = this.map.createLayer(
+      'Tile Layer 1',
+      this.tileset,
+      0,
+      0
+    )!;
+
+    
+    // Create floor layers
+    this.floor2Layer = this.map.createLayer(
+      'floor2',
+      [this.tileset, ...this.getAllTilesets()],
+      0,
+      0
+    )!;
+    
+    this.floorLayer = this.map.createLayer(
+      'floor',
+      [this.tileset, ...this.getAllTilesets()],
+      0,
+      0
+    )!;
+
+    
+
+    
+
+    // Create furniture layer
+    this.furnitureLayer = this.map.createLayer(
       'furniture',
-      [
-        tileset, 
-        objectsTileset, 
-        objects2Tileset,
-        rotaryPhonesTileset,
-        waterCoolerTileset,
-        tvWidescreenTileset,
-        sciFiDecorTileset,
-        megaPixelIconsTileset,
-        laptopTileset,
-        fullDecorTileset,
-        freePixelTileset,
-        deskOrnateTileset,
-        copyMachineTileset,
-        cardTableTileset,
-        nsaOfficeTileset
-      ],
-      0,    // x position
-      0     // y position
+      [this.tileset, ...this.getAllTilesets()],
+      0,
+      0
+    )!;
+
+    // Create objects layer
+    this.objectsLayer = this.map.createLayer(
+      'objects',
+      [this.tileset, ...this.getAllTilesets()],
+      0,
+      0
+    )!;
+
+    
+
+    // Create interactive layer
+    this.interactiveLayer = this.map.createLayer(
+      'interactive',
+      [this.tileset, ...this.getAllTilesets()],
+      0,
+      0
     )!;
 
     // Set up collision for specific tiles
-    // Wall tiles are in row 2 (indices 8-15)
-    // Furniture tiles are in row 3 (indices 16-23)
-    collisionLayer.setCollision([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
+    this.collisionLayer.setCollision([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
+  }
 
-    // Adjust the visual appearance
-    
-    collisionLayer.setScale(1);
-    floorLayer.setScale(1);
-
+  private setupPlayer(): void {
     // Create player sprite at the spawn point
     const spawnX = this.map.widthInPixels / 2;
     const spawnY = this.map.heightInPixels / 2;
@@ -161,6 +243,34 @@ export class MainScene extends Phaser.Scene {
     this.player.body.setSize(32, 32);  // Match grid size
     this.player.body.setOffset(8, 8);  // Center the collision box
 
+    // Initialize cursor keys
+    this.cursors = this.input.keyboard!.createCursorKeys();
+
+    // Snap player to grid on start
+    this.snapToGrid(this.player);
+    this.playerState.targetX = this.player.x;
+    this.playerState.targetY = this.player.y;
+
+    // Create door at the position from the map
+    const doorX = this.map.widthInPixels / 2 + 128;
+    const doorY = this.map.heightInPixels / 2;
+    this.door = this.add.rectangle(
+      doorX,
+      doorY,
+      32,
+      48,
+      0x8B4513
+    );
+    this.physics.add.existing(this.door, true);
+
+    // Add collider between player and collision layer
+    this.physics.add.collider(this.player, this.collisionLayer);
+
+    // Play idle-down animation by default
+    this.player.play('idle-down');
+  }
+
+  private setupAnimations(): void {
     // Create animations for each direction
     this.anims.create({
       key: 'idle-down',
@@ -199,62 +309,16 @@ export class MainScene extends Phaser.Scene {
 
     this.anims.create({
       key: 'walk-side',
-      frames: this.anims.generateFrameNumbers('player', { frames: [3, 7, 11, 15 ] }),
+      frames: this.anims.generateFrameNumbers('player', { frames: [3, 7, 11, 15] }),
       frameRate: 8,
       repeat: -1
     });
+  }
 
-    // Play idle-down animation by default
-    this.player.play('idle-down');
-
-    // Initialize cursor keys
-    this.cursors = this.input.keyboard!.createCursorKeys();
-
-    // Snap player to grid on start
-    this.snapToGrid(this.player);
-    this.playerState.targetX = this.player.x;
-    this.playerState.targetY = this.player.y;
-
-    // Create door at the position from the map
-    const doorX = this.map.widthInPixels / 2 + 128;
-    const doorY = this.map.heightInPixels / 2;
-    this.door = this.add.rectangle(
-      doorX,
-      doorY,
-      32,
-      48,
-      0x8B4513
-    );
-    this.physics.add.existing(this.door, true);
-
-    // Add collider between player and collision layer
-    this.physics.add.collider(this.player, collisionLayer);
-
-    // Set up camera to follow player with proper bounds
-    this.cameras.main.startFollow(this.player);
-    this.cameras.main.setZoom(1); // Start with base zoom
-    
-    // Remove camera bounds to allow viewing beyond map edges
-    this.cameras.main.setBounds(
-      -this.map.widthInPixels, 
-      -this.map.widthInPixels, 
-      this.map.widthInPixels * 3, 
-      this.map.widthInPixels * 3
-    );
-    
-    // Force player to stay centered by setting deadzone to 0
-    this.cameras.main.setDeadzone(0, 0);
-    
-    // Create minimap UI
-    this.createMinimap();
-    
-    // Add dynamic zoom based on screen size
-    this.scale.on('resize', this.resize, this);
-    this.resize();
-
-    // Set world bounds to match map size
-    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-    this.player.setCollideWorldBounds(true);
+  private setupCamera(): void {
+    // Adjust the visual appearance
+    this.collisionLayer.setScale(1);
+    this.floorLayer.setScale(1);
   }
 
   private checkDoorOverlap(): void {
