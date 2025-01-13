@@ -59,6 +59,8 @@ export class MainScene extends Phaser.Scene {
   private enterKey!: Phaser.Input.Keyboard.Key;
   private escapeKey!: Phaser.Input.Keyboard.Key;
 
+  private npcs: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
+
   constructor() {
     super({ key: 'MainScene' });
   }
@@ -95,6 +97,23 @@ export class MainScene extends Phaser.Scene {
     this.load.image('floor_gray', 'assets/items/Gray.png');
     this.load.image('floor_brown', 'assets/items/Brown.png');
 
+    // Load NPC spritesheets
+    this.load.spritesheet('player2', 'assets/player2.png', {
+      frameWidth: 48,
+      frameHeight: 48,
+      spacing: 0
+    });
+    this.load.spritesheet('player3', 'assets/player3.png', {
+      frameWidth: 48,
+      frameHeight: 48,
+      spacing: 0
+    });
+    this.load.spritesheet('player4', 'assets/player4.png', {
+      frameWidth: 48,
+      frameHeight: 48,
+      spacing: 0
+    });
+
     // Load the player sprite
     this.load.spritesheet('player', 'assets/player.png', {
       frameWidth: 48,
@@ -112,6 +131,23 @@ export class MainScene extends Phaser.Scene {
       this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
       this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     }
+
+    // Load NPC spritesheets
+    const npcLayer = this.map?.getObjectLayer('npc');
+    if (npcLayer) {
+      const npcTypes = new Set<string>();
+      npcLayer.objects.forEach(obj => {
+        const npcType = obj.properties?.find((p: { name: string }) => p.name === 'npcType')?.value;
+        if (npcType) npcTypes.add(npcType);
+      });
+      
+      npcTypes.forEach(npcType => {
+        this.load.spritesheet(npcType, `assets/${npcType}.png`, {
+          frameWidth: 48,
+          frameHeight: 48
+        });
+      });
+    }
   }
 
   create(): void {
@@ -123,6 +159,7 @@ export class MainScene extends Phaser.Scene {
     this.createMinimap();
     this.createDialogBox();
     this.setupInteractiveObjects();
+    this.setupNPCs();
     
     // Set up camera to follow player with proper bounds
     this.cameras.main.startFollow(this.player);
@@ -565,6 +602,69 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  private setupNPCs(): void {
+    const npcLayer = this.map.getObjectLayer('npc');
+    if (!npcLayer) return;
+
+    // Group NPCs by their type
+    const npcsByType = new Map<string, Phaser.Types.Math.Vector2Like[]>();
+    
+    npcLayer.objects.forEach(obj => {
+      const npcType = obj.properties?.find((p: { name: string }) => p.name === 'npcType')?.value;
+      if (npcType) {
+        if (!npcsByType.has(npcType)) {
+          npcsByType.set(npcType, []);
+        }
+        const positions = npcsByType.get(npcType);
+        if (positions) {
+          positions.push({ x: obj.x || 0, y: obj.y || 0 });
+        }
+      }
+    });
+
+    // Create NPCs and their paths
+    npcsByType.forEach((positions, npcType) => {
+      if (positions.length >= 2) {
+        // Create NPC sprite
+        const npc = this.physics.add.sprite(positions[0].x, positions[0].y, npcType);
+        npc.setData('type', npcType);
+        npc.setData('currentPoint', 0);
+        npc.setData('positions', positions);
+        
+        // Set up animations for this NPC
+        if (!this.anims.exists(`${npcType}_walk_left`)) {
+          this.anims.create({
+            key: `${npcType}_walk_left`,
+            frames: this.anims.generateFrameNumbers(npcType, { frames: [3, 7, 11, 15] }),
+            frameRate: 10,
+            repeat: -1
+          });
+        }
+        
+        if (!this.anims.exists(`${npcType}_walk_right`)) {
+          this.anims.create({
+            key: `${npcType}_walk_right`,
+            frames: this.anims.generateFrameNumbers(npcType, { frames: [3, 7, 11, 15] }),
+            frameRate: 10,
+            repeat: -1
+          });
+        }
+
+        // Start walking animation based on initial direction
+        const nextPoint = positions[1];
+        if (nextPoint.x > positions[0].x) {
+          npc.anims.play(`${npcType}_walk_right`, true);
+          npc.setFlipX(false);
+        } else {
+          npc.anims.play(`${npcType}_walk_left`, true);
+          npc.setFlipX(false);
+        }
+
+        this.npcs.push(npc);
+      }
+    });
+  }
+
   update(): void {
     // Handle enter press for interaction
     if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
@@ -629,5 +729,47 @@ export class MainScene extends Phaser.Scene {
 
       this.moveTowardTarget();
     }
+
+    // Update NPCs
+    this.npcs.forEach(npc => {
+      const positions = npc.getData('positions') as Phaser.Types.Math.Vector2Like[];
+      const currentPoint = npc.getData('currentPoint') as number;
+      const npcType = npc.getData('type') as string;
+      const lastMoveTime = npc.getData('lastMoveTime') as number || 0;
+      const currentTime = this.time.now;
+
+      if (currentTime - lastMoveTime < 2000) {
+        npc.setVelocity(0, 0);
+        return;
+      }
+
+      const targetPos = positions[currentPoint];
+      const distance = Phaser.Math.Distance.Between(npc.x, npc.y, targetPos.x, targetPos.y);
+      
+      if (distance < 2) {
+        // Reached current point, move to next point
+        const nextPoint = (currentPoint + 1) % positions.length;
+        npc.setData('currentPoint', nextPoint);
+        npc.setData('lastMoveTime', currentTime);
+        
+        // Update animation based on new direction
+        const nextPos = positions[nextPoint];
+        if (nextPos.x > npc.x) {
+          npc.anims.play(`${npcType}_walk_right`, true);
+          npc.setFlipX(false);
+        } else {
+          npc.anims.play(`${npcType}_walk_left`, true);
+          npc.setFlipX(false);
+        }
+      } else {
+        // Move towards current target
+        const angle = Phaser.Math.Angle.Between(npc.x, npc.y, targetPos.x, targetPos.y);
+        const speed = 100; // Adjust speed as needed
+        npc.setVelocity(
+          Math.cos(angle) * speed,
+          Math.sin(angle) * speed
+        );
+      }
+    });
   }
 }
