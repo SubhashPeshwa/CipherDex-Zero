@@ -37,11 +37,7 @@ const Game: React.FC = () => {
       physics: {
         default: 'arcade',
         arcade: {
-          gravity: { x: 0, y: 0 },
-          debug: true,
-          debugShowBody: true,
-          debugShowStaticBody: true,
-          debugBodyColor: 0xff00ff
+          gravity: { x: 0, y: 0 }
         }
       },
       scene: [MainScene]

@@ -39,7 +39,7 @@ export default function HomePage() {
               </p>
               <Button 
                 className="bg-black text-white hover:bg-gray-800 px-8 py-3 rounded-full text-lg flex items-center space-x-2"
-                onClick={() => navigate('/game')}
+                onClick={() => window.location.href = "https://us-east-16hqc0onoe.auth.us-east-1.amazoncognito.com/login?client_id=600q6se0q7sc7ir9kou3ku41i0&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fgame"}
               >
                 <span>Start Playing</span>
                 <ChevronRight className="w-5 h-5" />
@@ -48,7 +48,7 @@ export default function HomePage() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg filter blur-3xl opacity-30"></div>
               <img
-                src="/assets/game-preview.png"
+                src="/assets/game1.png"
                 alt="CipherDex: Zero Game Preview"
                 className="relative z-10 rounded-lg shadow-2xl border-4 border-black"
               />
