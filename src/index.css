@@ -3,11 +3,65 @@
 @tailwind utilities;
 
 @layer base {
-  html, body {
-    @apply h-full w-full m-0 p-0 overflow-hidden;
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 120 100% 50%;
   }
+}
 
-  #root {
-    @apply h-full w-full;
+@layer base {
+  * {
+    @apply border-green-500/20;
+  }
+  body {
+    @apply bg-black text-green-500;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+.DialogOverlay {
+  background-color: rgba(0, 0, 0, 0.85);
+  position: fixed;
+  inset: 0;
+  animation: overlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(4px);
+}
+
+.DialogContent {
+  background-color: black;
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.2),
+              inset 0 0 20px rgba(0, 255, 0, 0.1);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 450px;
+  min-height: 400px;
+  padding: 32px;
+  animation: contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes overlayShow {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes contentShow {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 }
