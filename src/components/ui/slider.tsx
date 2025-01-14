@@ -1,52 +1,26 @@
-import React from 'react';
+import * as React from "react"
+import * as SliderPrimitive from "@radix-ui/react-slider"
 
-interface SliderProps {
-  id?: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number[];
-  onValueChange: (value: number[]) => void;
-  className?: string;
-}
+import { cn } from "../../lib/utils"
 
-export const Slider: React.FC<SliderProps> = ({
-  id,
-  min,
-  max,
-  step,
-  value,
-  onValueChange,
-  className = ''
-}) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onValueChange([Number(e.target.value)]);
-  };
+const Slider = React.forwardRef<
+  React.ElementRef<typeof SliderPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <SliderPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex w-full touch-none select-none items-center",
+      className
+    )}
+    {...props}
+  >
+    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-primary/20">
+      <SliderPrimitive.Range className="absolute h-full bg-primary" />
+    </SliderPrimitive.Track>
+    <SliderPrimitive.Thumb className="block h-4 w-4 rounded-full border border-primary/50 bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50" />
+  </SliderPrimitive.Root>
+))
+Slider.displayName = SliderPrimitive.Root.displayName
 
-  return (
-    <div className={`relative w-full ${className}`}>
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value[0]}
-        onChange={handleChange}
-        className="w-full h-2 bg-green-200 rounded-lg appearance-none cursor-pointer 
-                 dark:bg-green-700 accent-green-500
-                 [&::-webkit-slider-thumb]:appearance-none
-                 [&::-webkit-slider-thumb]:w-4
-                 [&::-webkit-slider-thumb]:h-4
-                 [&::-webkit-slider-thumb]:rounded-full
-                 [&::-webkit-slider-thumb]:bg-green-500
-                 [&::-webkit-slider-thumb]:cursor-pointer
-                 [&::-moz-range-thumb]:w-4
-                 [&::-moz-range-thumb]:h-4
-                 [&::-moz-range-thumb]:rounded-full
-                 [&::-moz-range-thumb]:bg-green-500
-                 [&::-moz-range-thumb]:cursor-pointer"
-      />
-    </div>
-  );
-}; 
+export { Slider }
