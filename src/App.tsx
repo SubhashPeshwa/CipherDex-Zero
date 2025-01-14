@@ -1,5 +1,7 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Game from './components/Game';
+import HomePage from './components/HomePage';
 
 const App: React.FC = () => {
   return (
@@ -36,9 +38,16 @@ const App: React.FC = () => {
         }
       `}</style>
       <div id="portal-root" />
-      <div className="w-full h-screen bg-black overflow-hidden">
-        <Game />
-      </div>
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/game" element={
+            <div className="w-full h-screen bg-black overflow-hidden">
+              <Game />
+            </div>
+          } />
+        </Routes>
+      </Router>
     </>
   );
 };
