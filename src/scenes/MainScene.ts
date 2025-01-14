@@ -168,7 +168,6 @@ export class MainScene extends Phaser.Scene {
     this.setupCamera();
     this.createMinimap();
     this.createDialogBox();
-    this.createSettingsMenu();
     this.setupInteractiveObjects();
     this.setupNPCs();
     
@@ -756,168 +755,6 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-  private createSettingsMenu(): void {
-    this.settingsMenu = this.add.container(0, 0);
-    this.settingsMenu.setScrollFactor(0);
-    this.settingsMenu.setDepth(1000);
-    this.settingsOptions = [];
-
-    const menuWidth = 400;
-    const menuHeight = 300;
-    const padding = 20;
-
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x000000, 0.9);
-    graphics.lineStyle(2, 0xffffff);
-
-    const screenWidth = this.scale.width;
-    const screenHeight = this.scale.height;
-    const x = (screenWidth - menuWidth) / 2;
-    const y = (screenHeight - menuHeight) / 2;
-
-    graphics.fillRect(x, y, menuWidth, menuHeight);
-    graphics.strokeRect(x, y, menuWidth, menuHeight);
-
-    const title = this.add.text(x + menuWidth / 2, y + padding, 'Settings', {
-      fontSize: '32px',
-      color: '#ffffff',
-      fontFamily: 'monospace'
-    });
-    title.setOrigin(0.5, 0);
-
-    // Create close button container
-    const closeContainer = this.add.container(x + menuWidth - padding, y + padding);
-    const closeButtonBg = this.add.rectangle(0, 0, 40, 40, 0x444444);
-    closeButtonBg.setOrigin(1, 0);
-    const closeButton = this.add.text(-20, 8, 'X', {
-      fontSize: '24px',
-      color: '#ffffff',
-      fontFamily: 'monospace'
-    });
-    closeButton.setOrigin(0.5);
-    closeContainer.add([closeButtonBg, closeButton]);
-
-    // Make close button interactive
-    closeButtonBg.setInteractive({ useHandCursor: true })
-      .on('pointerover', () => {
-        closeButtonBg.setFillStyle(0x666666);
-        this.selectedSettingIndex = 0;
-        this.updateSelectionIndicator();
-      })
-      .on('pointerout', () => closeButtonBg.setFillStyle(0x444444))
-      .on('pointerdown', () => this.toggleSettings());
-
-    this.settingsOptions.push(closeContainer);
-
-    // Create music option container
-    const musicContainer = this.add.container(x + menuWidth / 2, y + menuHeight / 2);
-    const musicLabel = this.add.text(-100, 0, 'Music', {
-      fontSize: '24px',
-      color: '#ffffff',
-      fontFamily: 'monospace'
-    });
-    musicLabel.setOrigin(0, 0.5);
-
-    const toggleWidth = 60;
-    const toggleHeight = 30;
-    const toggleBg = this.add.rectangle(50, 0, toggleWidth, toggleHeight, 0x666666);
-    const knobSize = toggleHeight - 4;
-    const toggleKnob = this.add.rectangle(
-      toggleBg.x - toggleWidth/2 + knobSize/2 + 2,
-      0,
-      knobSize,
-      knobSize,
-      0xffffff
-    );
-
-    // Make toggle background interactive
-    toggleBg.setInteractive({ useHandCursor: true })
-      .on('pointerover', () => {
-        if (!this.isMusicMuted) {
-          toggleBg.setFillStyle(0x888888);
-        }
-        this.selectedSettingIndex = 1;
-        this.updateSelectionIndicator();
-      })
-      .on('pointerout', () => {
-        if (!this.isMusicMuted) {
-          toggleBg.setFillStyle(0x666666);
-        }
-      })
-      .on('pointerdown', () => {
-        this.toggleMusic(toggleBg, toggleKnob, toggleWidth, knobSize);
-      });
-
-    musicContainer.add([musicLabel, toggleBg, toggleKnob]);
-    this.settingsOptions.push(musicContainer);
-
-    // Create selection indicator
-    this.selectionIndicator = this.add.rectangle(0, 0, 0, 0, 0x00ff00, 0.3);
-    this.selectionIndicator.setVisible(false);
-    
-    // Add all elements to the container
-    this.settingsMenu.add([graphics, title, closeContainer, musicContainer, this.selectionIndicator]);
-    this.settingsMenu.setVisible(false);
-
-    // Update settings menu position on resize
-    this.scale.on('resize', () => {
-      const newScreenWidth = this.scale.width;
-      const newScreenHeight = this.scale.height;
-      const newX = (newScreenWidth - menuWidth) / 2;
-      const newY = (newScreenHeight - menuHeight) / 2;
-
-      graphics.clear();
-      graphics.fillStyle(0x000000, 0.9);
-      graphics.fillRect(newX, newY, menuWidth, menuHeight);
-      graphics.lineStyle(2, 0xffffff);
-      graphics.strokeRect(newX, newY, menuWidth, menuHeight);
-
-      title.setPosition(newX + menuWidth / 2, newY + padding);
-      closeContainer.setPosition(newX + menuWidth - padding, newY + padding);
-      musicContainer.setPosition(newX + menuWidth / 2, newY + menuHeight / 2);
-      this.updateSelectionIndicator();
-    });
-  }
-
-  private toggleMusic(toggleBg: Phaser.GameObjects.Rectangle, toggleKnob: Phaser.GameObjects.Rectangle, toggleWidth: number, knobSize: number): void {
-    this.isMusicMuted = !this.isMusicMuted;
-    if (this.isMusicMuted) {
-      this.backgroundMusic.pause();
-      this.tweens.add({
-        targets: toggleKnob,
-        x: toggleBg.x + toggleWidth/2 - knobSize/2 - 2,
-        duration: 200,
-        ease: 'Power2'
-      });
-      toggleBg.setFillStyle(0x444444);
-    } else {
-      this.backgroundMusic.resume();
-      this.tweens.add({
-        targets: toggleKnob,
-        x: toggleBg.x - toggleWidth/2 + knobSize/2 + 2,
-        duration: 200,
-        ease: 'Power2'
-      });
-      toggleBg.setFillStyle(0x666666);
-    }
-  }
-
-  private updateSelectionIndicator(): void {
-    if (!this.settingsMenu.visible) return;
-    
-    const selectedContainer = this.settingsOptions[this.selectedSettingIndex];
-    const bounds = selectedContainer.getBounds();
-    
-    this.selectionIndicator.setPosition(bounds.centerX, bounds.centerY);
-    this.selectionIndicator.setSize(bounds.width + 20, bounds.height + 10);
-    this.selectionIndicator.setVisible(true);
-  }
-
-  private toggleSettings(): void {
-    this.isSettingsVisible = !this.isSettingsVisible;
-    this.settingsMenu.setVisible(this.isSettingsVisible);
-  }
-
   update(): void {
     // Handle enter press for interaction
     if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
@@ -926,37 +763,17 @@ export class MainScene extends Phaser.Scene {
 
     // Handle escape key for dialog and settings
     if (Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
+      console.log('escape key pressed');
       if (this.isDialogVisible) {
         this.dialogBox.setVisible(false);
         this.isDialogVisible = false;
         this.resumeNPCs();
       } else if (!this.isSettingsVisible) {
         this.toggleSettings();
-        this.selectedSettingIndex = 0;
-        this.updateSelectionIndicator();
       } else {
-        this.toggleSettings();
+        this.closeSettings();
       }
       return;
-    }
-
-    // Handle settings menu keyboard controls
-    if (this.isSettingsVisible) {
-      if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
-        this.selectedSettingIndex = (this.selectedSettingIndex + 1) % this.settingsOptions.length;
-        this.updateSelectionIndicator();
-      }
-      
-      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-        const selectedContainer = this.settingsOptions[this.selectedSettingIndex];
-        if (this.selectedSettingIndex === 0) {
-          this.toggleSettings();
-        } else if (this.selectedSettingIndex === 1) {
-          const toggleBg = selectedContainer.getAt(1) as Phaser.GameObjects.Rectangle;
-          const toggleKnob = selectedContainer.getAt(2) as Phaser.GameObjects.Rectangle;
-          this.toggleMusic(toggleBg, toggleKnob, 60, 26);
-        }
-      }
     }
 
     // Only allow movement if dialog and settings are not visible
@@ -1073,5 +890,26 @@ export class MainScene extends Phaser.Scene {
         );
       }
     });
+  }
+
+  private toggleSettings(): void {
+    this.isSettingsVisible = !this.isSettingsVisible;
+    // Always emit the current state, not just when opening
+    this.game.events.emit('settingsOpened', this.isSettingsVisible);
+  }
+
+  public closeSettings(): void {
+    this.isSettingsVisible = false;
+    this.game.events.emit('settingsOpened', false);
+  }
+
+  public toggleGameMusic(): void {
+    this.isMusicMuted = !this.isMusicMuted;
+    if (this.isMusicMuted) {
+      this.backgroundMusic.pause();
+    } else {
+      this.backgroundMusic.resume();
+    }
+    this.game.events.emit('musicToggled', this.isMusicMuted);
   }
 }

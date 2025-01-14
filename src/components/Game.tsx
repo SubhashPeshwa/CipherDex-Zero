@@ -1,10 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { MainScene } from '../scenes/MainScene';
-import { LoadingScene } from '../scenes/LoadingScene';
+import Settings from './Settings';
+
+interface GameState {
+  isSettingsVisible: boolean;
+  isMusicMuted: boolean;
+  game?: Phaser.Game;
+}
 
 const Game: React.FC = () => {
   const gameRef = useRef<HTMLDivElement>(null);
+  const [gameState, setGameState] = useState<GameState>({
+    isSettingsVisible: false,
+    isMusicMuted: false
+  });
 
   useEffect(() => {
     if (!gameRef.current) return;
@@ -35,17 +45,52 @@ const Game: React.FC = () => {
     };
 
     const game = new Phaser.Game(config);
+    setGameState(prev => ({ ...prev, game }));
+
+    // Add event listeners for the game
+    game.events.on('settingsOpened', (isVisible: boolean) => {
+      console.log('Settings visibility changed:', isVisible);
+      setGameState(prev => ({ ...prev, isSettingsVisible: isVisible }));
+    });
+
+    game.events.on('musicToggled', (isMuted: boolean) => {
+      setGameState(prev => ({ ...prev, isMusicMuted: isMuted }));
+    });
 
     return () => {
       game.destroy(true);
     };
   }, []);
 
+  const handleCloseSettings = () => {
+    setGameState(prev => ({ ...prev, isSettingsVisible: false }));
+    // Notify the game scene
+    const mainScene = gameState.game?.scene.getScene('MainScene') as MainScene;
+    if (mainScene) {
+      mainScene.closeSettings();
+    }
+  };
+
+  const handleToggleMusic = () => {
+    const mainScene = gameState.game?.scene.getScene('MainScene') as MainScene;
+    if (mainScene) {
+      mainScene.toggleGameMusic();
+    }
+  };
+
   return (
-    <div 
-      ref={gameRef} 
-      className="fixed inset-0 bg-black w-full h-full"
-    />
+    <>
+      <div 
+        ref={gameRef} 
+        className="w-full h-full"
+      />
+      <Settings
+        isVisible={gameState.isSettingsVisible}
+        onClose={handleCloseSettings}
+        isMusicMuted={gameState.isMusicMuted}
+        onToggleMusic={handleToggleMusic}
+      />
+    </>
   );
 };
 
