@@ -1,19 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import Phaser from 'phaser';
 import { MainScene } from '../scenes/MainScene';
 import Settings from './Settings';
+import Terminal from './Terminal';
 
 interface GameState {
+  game?: Phaser.Game;
   isSettingsVisible: boolean;
   isMusicMuted: boolean;
-  game?: Phaser.Game;
+  isTerminalVisible: boolean;
 }
 
 const Game: React.FC = () => {
   const gameRef = useRef<HTMLDivElement>(null);
   const [gameState, setGameState] = useState<GameState>({
     isSettingsVisible: false,
-    isMusicMuted: false
+    isMusicMuted: false,
+    isTerminalVisible: false
   });
 
   useEffect(() => {
@@ -57,8 +60,24 @@ const Game: React.FC = () => {
       setGameState(prev => ({ ...prev, isMusicMuted: isMuted }));
     });
 
+    // Add event listeners for terminal
+    const handleShowTerminal = () => {
+      console.log('Show terminal');
+      setGameState(prev => ({ ...prev, isTerminalVisible: true }));
+    };
+
+    const handleHideTerminal = () => {
+      console.log('Hide terminal');
+      setGameState(prev => ({ ...prev, isTerminalVisible: false }));
+    };
+
+    window.addEventListener('showTerminal', handleShowTerminal);
+    window.addEventListener('hideTerminal', handleHideTerminal);
+
     return () => {
       game.destroy(true);
+      window.removeEventListener('showTerminal', handleShowTerminal);
+      window.removeEventListener('hideTerminal', handleHideTerminal);
     };
   }, []);
 
@@ -90,8 +109,9 @@ const Game: React.FC = () => {
         isMusicMuted={gameState.isMusicMuted}
         onToggleMusic={handleToggleMusic}
       />
+      <Terminal isVisible={gameState.isTerminalVisible} />
     </>
   );
-};
+}
 
 export default Game;

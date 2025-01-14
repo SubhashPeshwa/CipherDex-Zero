@@ -26,6 +26,7 @@ export class MainScene extends Phaser.Scene {
   private selectedSettingIndex: number = 0;
   private settingsOptions: Phaser.GameObjects.Container[] = [];
   private selectionIndicator!: Phaser.GameObjects.Rectangle;
+  private isTerminalVisible: boolean = false;
 
   // Tileset properties
   private tileset!: Phaser.Tilemaps.Tileset;
@@ -61,7 +62,6 @@ export class MainScene extends Phaser.Scene {
   private furnitureLayer!: Phaser.Tilemaps.TilemapLayer;
   private objectsLayer!: Phaser.Tilemaps.TilemapLayer;
   private collisionLayer!: Phaser.Tilemaps.TilemapLayer;
-  private interactiveLayer!: Phaser.Tilemaps.TilemapLayer;
 
   private enterKey!: Phaser.Input.Keyboard.Key;
   private escapeKey!: Phaser.Input.Keyboard.Key;
@@ -295,10 +295,6 @@ export class MainScene extends Phaser.Scene {
       0
     )!;
 
-    
-
-    
-
     // Create furniture layer
     this.furnitureLayer = this.map.createLayer(
       'furniture',
@@ -310,16 +306,6 @@ export class MainScene extends Phaser.Scene {
     // Create objects layer
     this.objectsLayer = this.map.createLayer(
       'objects',
-      [this.tileset, ...this.getAllTilesets()],
-      0,
-      0
-    )!;
-
-    
-
-    // Create interactive layer
-    this.interactiveLayer = this.map.createLayer(
-      'interactive',
       [this.tileset, ...this.getAllTilesets()],
       0,
       0
@@ -637,11 +623,36 @@ export class MainScene extends Phaser.Scene {
   }
 
   private handleInteraction(): void {
-    if (this.isDialogVisible) {
-      return; // Don't handle new interactions while dialog is visible
+    if (this.isDialogVisible || this.isSettingsVisible || this.isTerminalVisible) {
+      return;
     }
 
-    // Check if player is overlapping with any interactive object or NPC
+    // First check for terminal interactions
+    const playerBounds = this.player.getBounds();
+    const interactiveObjectsLayer = this.map.getObjectLayer('interactive');
+    let hasTerminal = false;
+    
+    if (interactiveObjectsLayer && interactiveObjectsLayer.objects) {
+      interactiveObjectsLayer.objects.forEach(obj => {
+        if (obj.name === 'terminal') {
+          const objBounds = new Phaser.Geom.Rectangle(obj.x!, obj.y!, obj.width!, obj.height!);
+          if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, objBounds)) {
+            hasTerminal = true;
+          }
+        }
+      });
+    }
+
+    if (hasTerminal) {
+      this.isTerminalVisible = true;
+      this.pauseNPCs();
+      this.player.setVelocity(0, 0);
+      const event = new CustomEvent('showTerminal');
+      window.dispatchEvent(event);
+      return;
+    }
+
+    // If no terminal interaction, check for other interactions
     let canInteract = false;
     let interactionText = 'Press ESC to close';
 
@@ -673,7 +684,7 @@ export class MainScene extends Phaser.Scene {
       
       this.dialogBox.setVisible(true);
       this.isDialogVisible = true;
-      this.pauseNPCs(); // Pause NPCs when dialog appears
+      this.pauseNPCs();
     }
   }
 
@@ -756,24 +767,35 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(): void {
-    // Handle enter press for interaction
-    if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-      this.handleInteraction();
-    }
-
-    // Handle escape key for dialog and settings
+    // Handle escape key for dialog, settings, and terminal
     if (Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
-      console.log('escape key pressed');
-      if (this.isDialogVisible) {
+      if (this.isTerminalVisible) {
+        this.isTerminalVisible = false;
+        this.resumeNPCs();
+        const event = new CustomEvent('hideTerminal');
+        window.dispatchEvent(event);
+        return;
+      } else if (this.isDialogVisible) {
         this.dialogBox.setVisible(false);
         this.isDialogVisible = false;
         this.resumeNPCs();
+        return;
       } else if (!this.isSettingsVisible) {
         this.toggleSettings();
       } else {
         this.closeSettings();
       }
       return;
+    }
+
+    // Only allow movement and interactions if no UI is visible
+    if (this.isDialogVisible || this.isSettingsVisible || this.isTerminalVisible) {
+      return;
+    }
+
+    // Handle enter press for interaction
+    if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+      this.handleInteraction();
     }
 
     // Only allow movement if dialog and settings are not visible
